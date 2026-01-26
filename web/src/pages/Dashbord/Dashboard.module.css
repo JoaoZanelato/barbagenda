@@ -3,11 +3,11 @@
 }
 
 .main {
-  @apply max-w-5xl mx-auto p-6 mt-8 space-y-8;
+  @apply max-w-6xl mx-auto p-6 mt-8 space-y-8;
 }
 
 .sectionHeader {
-  @apply flex items-center justify-between;
+  @apply flex flex-col md:flex-row md:items-center justify-between gap-4;
 }
 
 .pageTitle {
@@ -18,11 +18,24 @@
   @apply text-zinc-400 mt-1;
 }
 
-.gridCards {
-  @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+/* --- ABAS DE NAVEGAÇÃO --- */
+.tabs {
+  @apply flex items-center gap-2 border-b border-zinc-800 pb-1 mb-6;
 }
 
-/* Estilos específicos para os Cards de Métricas */
+.tabButton {
+  @apply px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors border-b-2 border-transparent;
+}
+
+.activeTab {
+  @apply text-gold-500 border-gold-500;
+}
+
+/* --- GRIDS E CARDS --- */
+.gridCards {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-4;
+}
+
 .metricCard {
   @apply bg-zinc-900 border-zinc-800;
 }
@@ -47,31 +60,30 @@
   @apply text-xs text-zinc-500 mt-1;
 }
 
-/* Tabela */
+/* --- TABELAS --- */
 .tableContainer {
   @apply border-zinc-800 bg-zinc-900 overflow-hidden;
-}
-
-.tableHeader {
-  @apply text-zinc-400 font-medium bg-zinc-950/50 text-xs uppercase tracking-wider;
 }
 
 .tableRow {
   @apply hover:bg-zinc-800/50 transition-colors border-b border-zinc-800 last:border-0;
 }
 
-.tableCell {
-  @apply px-6 py-4 text-sm;
+/* --- BADGES DE STATUS --- */
+.statusBadge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+.statusConfirmed {
+  @apply bg-blue-500/10 text-blue-500;
+}
+.statusCompleted {
+  @apply bg-green-500/10 text-green-500;
+}
+.statusCanceled {
+  @apply bg-red-500/10 text-red-500;
 }
 
-.cellName {
-  @apply font-medium text-zinc-200;
-}
-
-.cellDuration {
-  @apply text-zinc-500;
-}
-
-.cellPrice {
-  @apply text-right font-bold text-gold-500;
+/* --- INPUTS CUSTOMIZADOS (Select) --- */
+.selectInput {
+  @apply flex h-10 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:cursor-not-allowed disabled:opacity-50;
 }

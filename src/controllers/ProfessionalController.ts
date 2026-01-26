@@ -3,83 +3,94 @@ import { prisma } from "../prisma/client";
 import { hash } from "bcryptjs";
 
 export class ProfessionalController {
-  // 1. CONTRATAR (Criar Barbeiro)
+  // 1. CONTRATAR
   async create(req: Request, res: Response) {
-    const { name, email, password, phone } = req.body;
-    const tenant_id = (req as any).tenant_id;
+    try {
+      const { name, email, password, phone } = req.body;
+      const tenant_id = (req as any).tenant_id;
 
-    // Verificar se e-mail já existe
-    const userExists = await prisma.users.findUnique({
-      where: { email },
-    });
+      if (!tenant_id) return res.status(401).json({ error: "Não autorizado" });
+      if (!email || !password || !name)
+        return res.status(400).json({ error: "Preencha todos os campos" });
 
-    if (userExists) {
+      // Verificar se e-mail já existe
+      const userExists = await prisma.users.findUnique({
+        where: { email },
+      });
+
+      if (userExists) {
+        return res
+          .status(400)
+          .json({ error: "E-mail já cadastrado no sistema." });
+      }
+
+      const passwordHash = await hash(password, 8);
+
+      const professional = await prisma.users.create({
+        data: {
+          name,
+          email,
+          password_hash: passwordHash,
+          phone: phone || "", // Garante string vazia se não vier
+          role: "barber",
+          tenant_id,
+          active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      });
+
+      return res.json(professional);
+    } catch (err) {
+      console.error("Erro ao criar profissional:", err); // <--- LOG NO TERMINAL
       return res
-        .status(400)
-        .json({ error: "E-mail já cadastrado no sistema." });
+        .status(500)
+        .json({ error: "Erro interno ao salvar profissional" });
     }
-
-    // Criptografar a senha do novo funcionário
-    const passwordHash = await hash(password, 8);
-
-    const professional = await prisma.users.create({
-      data: {
-        name,
-        email,
-        password_hash: passwordHash,
-        phone,
-        role: "barber", // Definimos o cargo automaticamente
-        tenant_id,
-      },
-      select: {
-        // Não devolvemos a senha no retorno por segurança
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
-    });
-
-    return res.json(professional);
   }
 
-  // 2. LISTAR EQUIPE (Só do meu salão)
+  // 2. LISTAR
   async list(req: Request, res: Response) {
-    const tenant_id = (req as any).tenant_id;
+    try {
+      const tenant_id = (req as any).tenant_id;
 
-    const professionals = await prisma.users.findMany({
-      where: {
-        tenant_id,
-        role: "barber", // Filtra apenas funcionários, não o dono
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        active: true,
-      },
-    });
+      const professionals = await prisma.users.findMany({
+        where: {
+          tenant_id,
+          role: "barber",
+          active: true, // Só traz os ativos
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      });
 
-    return res.json(professionals);
+      return res.json(professionals);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro ao listar equipe" });
+    }
   }
 
-  // 3. DEMITIR (Deletar ou Desativar)
+  // 3. DEMITIR
   async delete(req: Request, res: Response) {
     const { id } = req.params;
-    const tenant_id = (req as any).tenant_id;
 
-    // Garante que o funcionário é deste salão antes de deletar
-    const user = await prisma.users.findFirst({
-      where: { id, tenant_id },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: "Funcionário não encontrado." });
+    try {
+      await prisma.users.update({
+        where: { id },
+        data: { active: false }, // Soft delete (apenas desativa)
+      });
+      return res.status(204).send();
+    } catch (err) {
+      return res.status(500).json({ error: "Erro ao deletar" });
     }
-
-    await prisma.users.delete({ where: { id } });
-
-    return res.status(204).send();
   }
 }

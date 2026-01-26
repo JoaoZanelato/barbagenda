@@ -2,7 +2,7 @@ import { Router } from "express";
 import { DashboardController } from "../controllers/DashboardController";
 import { AuthController } from "../controllers/AuthController";
 import { ServiceController } from "../controllers/ServiceController";
-import { ProfessionalController } from "../controllers/ProfessionalController"; // <--- NOVO
+import { ProfessionalController } from "../controllers/ProfessionalController";
 import { AvailabilityController } from "../controllers/AvailabilityController";
 import { AppointmentController } from "../controllers/AppointmentController";
 import { WhatsappController } from "../controllers/WhatsappController";
@@ -14,7 +14,7 @@ const router = Router();
 const dashboardController = new DashboardController();
 const authController = new AuthController();
 const serviceController = new ServiceController();
-const professionalController = new ProfessionalController(); // <--- NOVO
+const professionalController = new ProfessionalController();
 const availabilityController = new AvailabilityController();
 const appointmentController = new AppointmentController();
 const whatsappController = new WhatsappController();
@@ -25,13 +25,12 @@ const whatsappController = new WhatsappController();
 
 router.post("/login", authController.handle);
 router.post("/webhook/twilio", (req, res) =>
-  whatsappController.receive(req, res),
-);
+  whatsappController.handle(req, res),
+); // Ajustei para .handle se for o do Bot
 router.get("/", (req, res) => res.json({ status: "API Online 🚀" }));
 
-// Agendamento (Cliente Final)
+// Agendamento (Cliente Final - Disponibilidade)
 router.get("/disponibilidade", availabilityController.handle);
-router.post("/agendamento", appointmentController.handle);
 
 // Consultas Públicas (App/Site)
 router.get("/barbearia/:slug/servicos", async (req, res) => {
@@ -53,11 +52,17 @@ router.post("/services", serviceController.create);
 router.get("/services", serviceController.list);
 router.delete("/services/:id", serviceController.delete);
 
-// 2. Profissionais (NOVO)
+// 2. Profissionais
 router.post("/professionals", professionalController.create);
 router.get("/professionals", professionalController.list);
 router.delete("/professionals/:id", professionalController.delete);
 
+// 3. Agendamentos (Dashboard) <--- ADICIONE ISTO AQUI
+router.get("/appointments", appointmentController.index); // Listar no painel
+router.post("/appointments", appointmentController.store); // Criar manual
+router.patch("/appointments/:id", appointmentController.update); // Mudar status
+
+// 4. Métricas
 router.get("/dashboard/metrics", dashboardController.index);
 
 export { router };

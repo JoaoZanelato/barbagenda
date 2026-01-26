@@ -4,15 +4,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Nossa paleta personalizada
         gold: {
-          400: "#FCD34D", // Amarelo claro
-          500: "#D4AF37", // O Dourado Clássico (Metallic Gold)
-          600: "#B5952F", // Dourado escuro (para hover)
-          900: "#423608", // Dourado quase preto
+          400: "#FCD34D",
+          500: "#D4AF37",
+          600: "#B5952F",
+          900: "#423608",
         },
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require("tailwindcss-animate"), 
+  ],
 };
