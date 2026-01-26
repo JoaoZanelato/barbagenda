@@ -2,7 +2,7 @@ import { Router } from "express";
 import { AvailabilityController } from "../controllers/AvailabilityController";
 import { AppointmentController } from "../controllers/AppointmentController";
 import { WhatsappController } from "../controllers/WhatsappController";
-import { prisma } from "../prisma/client"; // Importando direto só para rota simples
+import { prisma } from "../prisma/client";
 
 const router = Router();
 
@@ -31,7 +31,17 @@ router.get("/users", async (req, res) => {
   return res.json(users);
 });
 
-router.get("/webhook", whatsappController.verify); // Para confirmar a conexão
-router.post("/webhook", whatsappController.receive); // Para receber mensagens
+// ========================================
+// WEBHOOKS DO WHATSAPP
+// ========================================
+
+// Meta WhatsApp Business API (antigo - mantido para referência)
+router.get("/webhook", whatsappController.verify);
+router.post("/webhook", whatsappController.receive);
+
+// Twilio WhatsApp API (novo - recomendado)
+router.post("/webhook/twilio", (req, res) =>
+  whatsappController.receive(req, res),
+);
 
 export { router };
