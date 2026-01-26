@@ -1,0 +1,36 @@
+.container {
+  @apply space-y-1;
+}
+
+.label {
+  @apply block text-sm font-medium text-zinc-300;
+}
+
+.wrapper {
+  @apply relative;
+}
+
+.icon {
+  @apply absolute left-3 top-2.5 h-5 w-5 text-zinc-500 transition-colors pointer-events-none;
+}
+
+/* Quando o input dentro do wrapper tiver foco, muda a cor do ícone */
+.wrapper:focus-within .icon {
+  @apply text-gold-500;
+}
+
+.input {
+  @apply flex h-10 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 transition-all outline-none;
+}
+
+.input:focus {
+  @apply ring-2 ring-gold-500 ring-offset-2 ring-offset-zinc-950 border-transparent;
+}
+
+.input:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.hasIcon {
+  @apply pl-10;
+}

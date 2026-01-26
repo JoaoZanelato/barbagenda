@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { DashboardController } from "../controllers/DashboardController";
 import { AuthController } from "../controllers/AuthController";
 import { ServiceController } from "../controllers/ServiceController";
 import { ProfessionalController } from "../controllers/ProfessionalController"; // <--- NOVO
@@ -10,6 +11,7 @@ import { prisma } from "../prisma/client";
 
 const router = Router();
 
+const dashboardController = new DashboardController();
 const authController = new AuthController();
 const serviceController = new ServiceController();
 const professionalController = new ProfessionalController(); // <--- NOVO
@@ -55,5 +57,7 @@ router.delete("/services/:id", serviceController.delete);
 router.post("/professionals", professionalController.create);
 router.get("/professionals", professionalController.list);
 router.delete("/professionals/:id", professionalController.delete);
+
+router.get("/dashboard/metrics", dashboardController.index);
 
 export { router };

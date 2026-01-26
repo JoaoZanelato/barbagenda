@@ -1,0 +1,11 @@
+.card {
+  @apply rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-50 shadow-sm;
+}
+
+.header {
+  @apply flex flex-col space-y-1.5 p-6;
+}
+
+.content {
+  @apply p-6 pt-0;
+}

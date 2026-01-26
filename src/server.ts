@@ -23,7 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 // 4. CORS (Configurado para aceitar Cookies)
 app.use(
   cors({
-    origin: "http://localhost:3000", // IMPORTANTE: Coloque a URL do seu Frontend aqui (React/Next)
+    origin: "http://localhost:5173", // IMPORTANTE: Coloque a URL do seu Frontend aqui (React/Next)
     credentials: true, // <--- Isso permite que o navegador envie o Cookie
   }),
 );
