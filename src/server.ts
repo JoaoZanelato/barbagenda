@@ -1,11 +1,12 @@
 import express from "express";
 import cors from "cors";
 import { router } from "./routes";
-import cookieParser from "cookie-parser"; // <--- NOVO IMPORT
+import cookieParser from "cookie-parser";
+import { CronService } from "./services/CronService"; // <--- Import do serviço de Cron
 
 const app = express();
 
-// 1. Log de Entrada (O Dedo-Duro)
+// 1. Log de Entrada (Monitoramento)
 app.use((req, res, next) => {
   console.log(
     `[${new Date().toISOString()}] 🔔 BATEU NA PORTA: ${req.method} ${req.url}`,
@@ -13,29 +14,33 @@ app.use((req, res, next) => {
   next();
 });
 
-// 2. Leitor de Cookies
-app.use(cookieParser()); // <--- HABILITA LEITURA DE COOKIES
+// 2. Leitor de Cookies (Necessário para autenticação futura se usar cookies)
+app.use(cookieParser());
 
-// 3. Middlewares de parse
+// 3. Middlewares de parse (JSON e URL Encoded)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 4. CORS (Configurado para aceitar Cookies)
+// 4. CORS (Configurado para o Frontend)
 app.use(
   cors({
-    origin: "http://localhost:5173", // IMPORTANTE: Coloque a URL do seu Frontend aqui (React/Next)
-    credentials: true, // <--- Isso permite que o navegador envie o Cookie
+    origin: "http://localhost:5173", // URL do seu Frontend Vite
+    credentials: true, // Permite enviar cookies/headers de autorização
   }),
 );
 
-// 5. Bypass do warning do ngrok (opcional, mantendo seu código original)
+// 5. Bypass do warning do ngrok (Para não travar o webhook)
 app.use((req, res, next) => {
   res.setHeader("ngrok-skip-browser-warning", "true");
   next();
 });
 
-// 6. Rotas
+// 6. Rotas da Aplicação
 app.use(router);
+
+// 7. INICIA O CRON JOB (O Vigia de Agendamentos)
+// Isso garante que o serviço de monitoramento inicie junto com o servidor
+new CronService();
 
 const PORT = 3000;
 app.listen(PORT, () => {
