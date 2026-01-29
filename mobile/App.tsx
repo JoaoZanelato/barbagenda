@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
@@ -47,14 +47,14 @@ export default function App() {
   }, [fontsLoaded]);
 
   if (!fontsLoaded) {
-    return null; // Ou um loading spinner simples
+    return null;
   }
 
-  // ... (O resto das funções handleLoginSuccess, handleLogout permanecem iguais)
   const handleLoginSuccess = (token: string) => {
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     setAuth("authenticated");
   };
+
   const handleLogout = () => {
     setAuth("guest");
     setRole("none");
@@ -62,16 +62,36 @@ export default function App() {
   };
 
   return (
-    // Atualizei a cor de fundo para o novo preto profundo
     <View
       style={{ flex: 1, backgroundColor: colors.background }}
       onLayout={onLayoutRootView}
     >
       <StatusBar style="light" translucent backgroundColor="transparent" />
 
-      {/* ... O RESTO DO SEU JSX DE NAVEGAÇÃO PERMANECE IGUAL ... */}
+      {/* 1. Tela Inicial (Escolha de Perfil) */}
       {role === "none" && <Welcome onSelectRole={setRole} />}
-      {/* etc... */}
+
+      {/* 2. Fluxo BARBEIRO */}
+      {role === "barber" && auth === "guest" && (
+        <BarberAuth
+          onLoginSuccess={handleLoginSuccess}
+          onBack={() => setRole("none")}
+        />
+      )}
+      {role === "barber" && auth === "authenticated" && (
+        <BarberDashboard onLogout={handleLogout} />
+      )}
+
+      {/* 3. Fluxo CLIENTE */}
+      {role === "client" && auth === "guest" && (
+        <ClientAuth
+          onLoginSuccess={handleLoginSuccess}
+          onBack={() => setRole("none")}
+        />
+      )}
+      {role === "client" && auth === "authenticated" && (
+        <ClientHome onLogout={handleLogout} />
+      )}
     </View>
   );
 }

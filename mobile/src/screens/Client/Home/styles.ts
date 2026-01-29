@@ -1,47 +1,84 @@
 import { StyleSheet } from "react-native";
 import { colors } from "../../../theme/colors";
+import { fontFamily, textStyles } from "../../../theme/fonts";
 
 export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: 20,
+  },
 
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 40,
-    marginBottom: 20,
+    marginBottom: 30,
   },
-  headerTitle: { fontSize: 24, fontWeight: "bold", color: colors.text },
 
-  listContent: { paddingBottom: 20, gap: 12 },
+  // Título da Página com Fonte Serifada
+  headerTitle: {
+    fontFamily: fontFamily.heading,
+    fontSize: 28,
+    color: colors.primary, // Dourado
+  },
 
+  listContent: { paddingBottom: 40, gap: 16 },
+
+  // Cartão de Barbearia - Estilo Premium
   card: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
     backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 4, // Bordas retas
     borderWidth: 1,
-    borderColor: colors.surfaceHighlight,
+    borderColor: colors.borderSubtle,
+    // Sombra sutil
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
 
+  // Avatar com borda dourada
   avatar: {
-    width: 48,
-    height: 48,
-    backgroundColor: colors.surfaceHighlight,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    backgroundColor: colors.surface,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
-  avatarText: { color: colors.primary, fontWeight: "bold", fontSize: 20 },
 
-  cardTitle: { color: colors.text, fontSize: 16, fontWeight: "bold" },
-  cardDesc: { color: colors.textSecondary, fontSize: 14 },
+  avatarText: {
+    fontFamily: fontFamily.heading,
+    color: colors.primary,
+    fontSize: 24,
+  },
+
+  cardTitle: {
+    fontFamily: fontFamily.bodyBold,
+    color: colors.text,
+    fontSize: 18,
+    marginBottom: 4,
+  },
+
+  cardDesc: {
+    fontFamily: fontFamily.body,
+    color: colors.textSecondary,
+    fontSize: 14,
+  },
 
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyText: {
     color: colors.textSecondary,
+    fontFamily: fontFamily.body,
     textAlign: "center",
     marginTop: 40,
   },

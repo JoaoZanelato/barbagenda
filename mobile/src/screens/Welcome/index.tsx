@@ -14,6 +14,7 @@ export function Welcome({ onSelectRole }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.logoArea}>
+        {/* Usando o ícone transparente */}
         <Image
           source={require("../../../assets/images/icon.png")}
           style={styles.logoImage}
@@ -52,7 +53,7 @@ export function Welcome({ onSelectRole }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* 👇 COPYRIGHT AQUI */}
+      {/* Rodapé fixo */}
       <Text style={styles.footer}>© {currentYear} BarbAgenda Inc.</Text>
     </View>
   );

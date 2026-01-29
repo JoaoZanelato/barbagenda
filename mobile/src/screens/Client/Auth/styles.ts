@@ -1,34 +1,48 @@
 import { StyleSheet } from "react-native";
 import { colors } from "../../../theme/colors";
+import { fontFamily } from "../../../theme/fonts"; // Importando a fonte
 
 export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 20 },
-  backBtn: { marginBottom: 20, marginTop: 40 },
-  textGray: { color: colors.textSecondary },
-  authBox: { justifyContent: "center", flex: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background, // Preto Profundo (#09090B)
+    padding: 24,
+  },
+
+  backBtn: {
+    marginBottom: 40,
+    marginTop: 20,
+    alignSelf: "flex-start",
+  },
+  textGray: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    fontSize: 16,
+  },
+
+  authBox: {
+    flex: 1,
+    justifyContent: "center",
+    paddingBottom: 80,
+  },
+
+  // Título de Luxo
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 20,
+    fontFamily: fontFamily.heading, // Playfair Display
+    fontSize: 32,
+    color: colors.primary, // Dourado
+    marginBottom: 40,
     textAlign: "center",
+    letterSpacing: 1,
   },
-  input: {
-    backgroundColor: colors.surface,
-    color: colors.text,
-    padding: 14,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.surfaceHighlight,
+
+  // Links (Esqueci senha / Cadastrar)
+  link: {
+    color: colors.primary,
+    textAlign: "center",
+    marginTop: 24,
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 14,
+    textDecorationLine: "underline",
   },
-  btnPrimary: {
-    backgroundColor: colors.primary,
-    padding: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  btnText: { color: colors.black, fontWeight: "bold" },
-  link: { color: colors.primary, textAlign: "center", marginTop: 20 },
 });
