@@ -5,7 +5,6 @@ import { ServiceController } from "../controllers/ServiceController";
 import { ProfessionalController } from "../controllers/ProfessionalController";
 import { AvailabilityController } from "../controllers/AvailabilityController";
 import { AppointmentController } from "../controllers/AppointmentController";
-import { WhatsappController } from "../controllers/WhatsappController";
 import { TenantController } from "../controllers/TenantController"; // <--- NOVO
 import { ensureAuthenticated } from "../middlewares/ensureAuthenticated";
 import { prisma } from "../prisma/client";
@@ -18,7 +17,6 @@ const serviceController = new ServiceController();
 const professionalController = new ProfessionalController();
 const availabilityController = new AvailabilityController();
 const appointmentController = new AppointmentController();
-const whatsappController = new WhatsappController();
 const tenantController = new TenantController(); // <--- NOVO
 
 // ==========================================================
@@ -27,9 +25,6 @@ const tenantController = new TenantController(); // <--- NOVO
 
 router.post("/login", authController.handle);
 router.post("/tenants", tenantController.store); // <--- Rota de Cadastro (Signup)
-router.post("/webhook/twilio", (req, res) =>
-  whatsappController.handle(req, res),
-);
 router.get("/", (req, res) => res.json({ status: "API Online 🚀" }));
 
 router.get("/disponibilidade", availabilityController.handle);

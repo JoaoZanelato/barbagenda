@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import { router } from "./routes";
 import cookieParser from "cookie-parser";
-import { CronService } from "./services/CronService"; // <--- Import do serviço de Cron
 
 const app = express();
 
@@ -38,9 +37,6 @@ app.use((req, res, next) => {
 // 6. Rotas da Aplicação
 app.use(router);
 
-// 7. INICIA O CRON JOB (O Vigia de Agendamentos)
-// Isso garante que o serviço de monitoramento inicie junto com o servidor
-new CronService();
 
 const PORT = 3000;
 app.listen(PORT, () => {
