@@ -13,29 +13,16 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
     height: 56,
+    zIndex: 1, // Garante que fique acima de outros elementos se houver sobreposição
   },
-
-  // 👇 ESTILO DO GLOW DOURADO
-  focused: {
-    borderColor: colors.primary, // Borda Dourada
-    // Sombra para iOS (Glow)
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 }, // Sombra centralizada
-    shadowOpacity: 0.5, // Intensidade do brilho
-    shadowRadius: 10, // Tamanho do esfumaçado
-    // Sombra para Android (Elevation)
-    elevation: 5,
-    backgroundColor: colors.surface, // Garante que o fundo não fique transparente
-  },
-
   input: {
     flex: 1,
-    height: "100%",
+    // height: '100%', // Removi para evitar bugs de layout no Android
     color: colors.text,
     fontFamily: fontFamily.body,
     fontSize: 16,
+    paddingVertical: 0, // Garante alinhamento do texto
   },
-
   icon: {
     marginRight: 12,
   },

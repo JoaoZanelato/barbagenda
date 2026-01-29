@@ -1,31 +1,30 @@
 import { Router } from "express";
 import { DashboardController } from "../controllers/DashboardController";
-import { AuthController } from "../controllers/AuthController";
-import { MobileAuthController } from "../controllers/MobileAuthController"; // <--- NOVO
+import { AuthController } from "../controllers/AuthController"; // 👈 TEM QUE TER AS CHAVES { }
+import { MobileAuthController } from "../controllers/MobileAuthController";
 import { ServiceController } from "../controllers/ServiceController";
 import { ProfessionalController } from "../controllers/ProfessionalController";
 import { AvailabilityController } from "../controllers/AvailabilityController";
 import { AppointmentController } from "../controllers/AppointmentController";
 import { TenantController } from "../controllers/TenantController";
 import { ensureAuthenticated } from "../middlewares/ensureAuthenticated";
-import { ensureMobileAuth } from "../middlewares/ensureMobileAuth"; // <--- NOVO
+import { ensureMobileAuth } from "../middlewares/ensureMobileAuth";
 import { prisma } from "../prisma/client";
 
 const router = Router();
 
-// Controllers Web
+// Instanciar Controllers
 const dashboardController = new DashboardController();
-const authController = new AuthController();
+const authController = new AuthController(); // 👈 O erro estava aqui
 const serviceController = new ServiceController();
 const professionalController = new ProfessionalController();
 const availabilityController = new AvailabilityController();
 const appointmentController = new AppointmentController();
 const tenantController = new TenantController();
-// Controller Mobile
-const mobileAuthController = new MobileAuthController(); // <--- NOVO
+const mobileAuthController = new MobileAuthController();
 
 // ==========================================================
-// 🔓 ROTAS PÚBLICAS (WEB & APP)
+// 🔓 ROTAS PÚBLICAS
 // ==========================================================
 
 // Web Admin Login
@@ -38,21 +37,27 @@ router.post("/mobile/login", mobileAuthController.login);
 
 // App Mobile - Listagem Pública
 router.get("/mobile/tenants", async (req, res) => {
-  // Lista barbearias para o usuário escolher
   const tenants = await prisma.tenants.findMany({
     select: { id: true, name: true, slug: true },
   });
   return res.json(tenants);
 });
 
+// App Mobile - Dados da Barbearia
 // App Mobile - Dados da Barbearia Selecionada
 router.get("/mobile/tenants/:id/details", async (req, res) => {
   const { id } = req.params;
-  // Busca Profissionais e Serviços daquela barbearia
+
+  // Busca APENAS Profissionais com cargo 'barber' e que estão ATIVOS
   const pros = await prisma.users.findMany({
-    where: { tenant_id: id, role: "barber" },
+    where: {
+      tenant_id: id,
+      role: "barber", // Garante que Admin não aparece
+      active: true, // Garante que demitidos não aparecem
+    },
     select: { id: true, name: true },
   });
+
   const services = await prisma.services.findMany({
     where: { tenant_id: id, active: true },
   });
@@ -60,21 +65,19 @@ router.get("/mobile/tenants/:id/details", async (req, res) => {
   return res.json({ professionals: pros, services });
 });
 
-// Disponibilidade (Público para consulta)
+// Disponibilidade
 router.get("/disponibilidade", availabilityController.handle);
 
 // ==========================================================
-// 📱 ROTAS PRIVADAS DO APP (Requer Login com PIN)
+// 📱 ROTAS PRIVADAS DO APP (Mobile)
 // ==========================================================
-// Agora o agendamento pega o telefone do token JWT
 router.post("/mobile/appointments", ensureMobileAuth, async (req, res) => {
-  // Wrapper para injetar o telefone autenticado no controller original
   req.body.customerPhone = req.body.authenticatedPhone;
   return appointmentController.createBatch(req, res);
 });
 
 // ==========================================================
-// 🔒 ROTAS PRIVADAS WEB (Painel Admin)
+// 🔒 ROTAS PRIVADAS WEB (Admin)
 // ==========================================================
 router.use(ensureAuthenticated);
 

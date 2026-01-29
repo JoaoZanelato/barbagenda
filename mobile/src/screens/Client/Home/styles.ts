@@ -1,19 +1,21 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 import { colors } from "../../../theme/colors";
-import { fontFamily, textStyles } from "../../../theme/fonts";
+import { fontFamily } from "../../../theme/fonts";
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-    padding: 20,
+    backgroundColor: colors.background, // Preto Profundo (#09090B)
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    // 👇 Correção essencial para a Barra de Status
+    paddingTop: Platform.OS === "android" ? 60 : 50,
   },
 
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 40,
     marginBottom: 30,
   },
 
@@ -24,7 +26,10 @@ export const styles = StyleSheet.create({
     color: colors.primary, // Dourado
   },
 
-  listContent: { paddingBottom: 40, gap: 16 },
+  listContent: {
+    paddingBottom: 40,
+    gap: 16,
+  },
 
   // Cartão de Barbearia - Estilo Premium
   card: {
@@ -75,7 +80,12 @@ export const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   emptyText: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,

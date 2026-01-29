@@ -2,13 +2,17 @@ import React from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
+import { Mail, Lock, Briefcase } from "lucide-react-native";
 import { styles } from "./styles";
 import { useBarberAuth } from "./useBarberAuth";
 import { colors } from "../../../theme/colors";
+import { Input } from "../../../components/Input";
+import { Button } from "../../../components/Button";
 
 interface Props {
   onLoginSuccess: (token: string) => void;
@@ -20,45 +24,54 @@ export function BarberAuth({ onLoginSuccess, onBack }: Props) {
     useBarberAuth(onLoginSuccess);
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-        <Text style={styles.textGray}>Voltar</Text>
-      </TouchableOpacity>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.container}>
+          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+            <Text style={styles.textGray}>Voltar</Text>
+          </TouchableOpacity>
 
-      <View style={styles.authBox}>
-        <Text style={styles.title}>Acesso Profissional</Text>
+          <View style={styles.authBox}>
+            <View style={styles.iconCircle}>
+              <Briefcase size={40} color={colors.primary} />
+            </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor="#71717A"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+            <Text style={styles.title}>Portal Profissional</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Senha"
-          secureTextEntry
-          placeholderTextColor="#71717A"
-          value={password}
-          onChangeText={setPassword}
-        />
+            <View style={styles.formWidth}>
+              <Input
+                placeholder="E-mail Corporativo"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                icon={<Mail size={20} color={colors.textSecondary} />}
+              />
 
-        <TouchableOpacity
-          style={styles.btnPrimary}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.black} />
-          ) : (
-            <Text style={styles.btnText}>Entrar</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
+              <Input
+                placeholder="Senha de Acesso"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                icon={<Lock size={20} color={colors.textSecondary} />}
+              />
+
+              <Button
+                title="Entrar no Painel"
+                onPress={handleLogin}
+                loading={loading}
+                style={{ marginTop: 10 }}
+              />
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
