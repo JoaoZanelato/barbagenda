@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
-import api from "./src/services/api";
+import api from "./src/services/API";
 
 // Telas
 import { Welcome } from "./src/screens/Welcome";
 import { ClientAuth } from "./src/screens/Client/Auth";
-import { ClientHome } from "./src/screens/Client/Home"; // (Crie este similar ao BarberHome)
-import { BarberAuth } from "./src/screens/Barber/Auth"; // (Crie este similar ao ClientAuth)
+import { ClientHome } from "./src/screens/Client/Home/index"; 
+import { BarberAuth } from "./src/screens/Barber/Auth/index"; 
 import { BarberDashboard } from "./src/screens/Barber/Home";
 
 // Estado global simples de navegação

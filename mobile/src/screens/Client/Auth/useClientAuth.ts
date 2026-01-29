@@ -1,36 +1,42 @@
 import { useState } from "react";
 import { Alert } from "react-native";
-import api from "../../../services/API";
+import { authService } from "../../../services/authService";
 
 export function useClientAuth(onLoginSuccess: (token: string) => void) {
   const [step, setStep] = useState<"login" | "register">("login");
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   async function handleAuth() {
-    if (!phone || !pin) return Alert.alert("Erro", "Preencha os campos.");
+    if (!phone || !pin) return Alert.alert("Erro", "Preencha telefone e PIN.");
     if (step === "register" && !name)
-      return Alert.alert("Erro", "Preencha o nome.");
+      return Alert.alert("Erro", "Preencha seu nome.");
 
     setLoading(true);
     try {
-      const url = step === "login" ? "/mobile/login" : "/mobile/register";
-      const payload = step === "login" ? { phone, pin } : { name, phone, pin };
+      if (step === "login") {
+        // Login
+        const data = await authService.loginClient({ phone, pin });
+        if (data.token) onLoginSuccess(data.token);
+      } else {
+        // Registro
+        const data = await authService.registerClient({ name, phone, pin });
 
-      const response = await api.post(url, payload);
-
-      if (response.data.token) {
-        // Se a API retornar token direto no registro ou login
-        onLoginSuccess(response.data.token);
-      } else if (step === "register") {
-        // Se o registro apenas criar a conta
-        setStep("login");
-        Alert.alert("Sucesso", "Conta criada! Faça login.");
+        // Se a API já retornar token no registro, loga direto
+        if (data.token) {
+          onLoginSuccess(data.token);
+        } else {
+          // Senão, manda ir pro login
+          setStep("login");
+          Alert.alert("Sucesso", "Conta criada! Agora faça login.");
+        }
       }
     } catch (error) {
-      Alert.alert("Erro", "Verifique seus dados ou conexão.");
+      Alert.alert("Erro", "Verifique seus dados. O PIN deve ter 4 dígitos.");
     } finally {
       setLoading(false);
     }
@@ -38,6 +44,8 @@ export function useClientAuth(onLoginSuccess: (token: string) => void) {
 
   function toggleStep() {
     setStep((prev) => (prev === "login" ? "register" : "login"));
+    // Limpa campos sensíveis ao trocar
+    setPin("");
   }
 
   return {
