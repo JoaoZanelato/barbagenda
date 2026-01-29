@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
 import {
-  parseISO,
   format,
   addMinutes,
   addDays,
@@ -12,6 +11,11 @@ import {
   isBefore,
   isAfter,
   getDay,
+  parse,
+  isValid,
+  isPast,
+  isSameDay,
+  getHours,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import twilio from "twilio";
@@ -36,35 +40,27 @@ export class WhatsappController {
     }
   }
 
-  // --- 🧠 O CÉREBRO DO HORÁRIO ---
+  // --- LÓGICA DE CALCULAR HORÁRIOS LIVRES ---
   async getAvailableSlots(
     proId: string,
     tenantId: string,
     date: Date,
-    duration: number,
+    totalDuration: number,
   ) {
-    const dayOfWeek = getDay(date); // 0 (Domingo) a 6 (Sábado)
+    const dayOfWeek = getDay(date);
+    const SLOT_INTERVAL = 30; // Intervalo fixo de 30 min para ficar "redondo"
 
-    // 1. Busca os Horários de Funcionamento da Barbearia para esse dia
-    const operatingHours = await prisma.operatingHours.findMany({
-      where: {
-        tenant_id: tenantId,
-        day_of_week: dayOfWeek,
-      },
+    const operatingHours = await prisma.operating_hours.findMany({
+      where: { tenant_id: tenantId, day_of_week: dayOfWeek },
       orderBy: { open_time: "asc" },
     });
 
-    // Se não tem horário cadastrado para hoje, está FECHADO
     if (operatingHours.length === 0) return [];
 
-    // 2. Busca agendamentos já ocupados nesse dia
     const appointments = await prisma.appointments.findMany({
       where: {
-        user_id: proId,
-        start_time: {
-          gte: startOfDay(date),
-          lte: endOfDay(date),
-        },
+        professional_id: proId,
+        start_time: { gte: startOfDay(date), lte: endOfDay(date) },
         status: { not: "canceled" },
       },
     });
@@ -72,35 +68,29 @@ export class WhatsappController {
     let slots: Date[] = [];
     const now = new Date();
 
-    // 3. Para cada intervalo de funcionamento (ex: Manhã e Tarde)
     for (const range of operatingHours) {
-      // Converte string "08:00" para Date
       const [openHour, openMin] = range.open_time.split(":").map(Number);
       const [closeHour, closeMin] = range.close_time.split(":").map(Number);
 
       let currentTime = setMinutes(setHours(date, openHour), openMin);
       const rangeEndTime = setMinutes(setHours(date, closeHour), closeMin);
 
-      // Loop gerando horários dentro desse intervalo
       while (isBefore(currentTime, rangeEndTime)) {
-        // O horário de fim do serviço não pode estourar o fechamento
-        const slotEnd = addMinutes(currentTime, duration);
+        const combinedEndTime = addMinutes(currentTime, totalDuration);
 
-        if (isAfter(slotEnd, rangeEndTime)) {
-          break; // Não cabe mais serviços neste turno
-        }
+        if (isAfter(combinedEndTime, rangeEndTime)) break;
 
-        // Verifica se é futuro (não pode agendar 10:00 se já são 11:00)
-        if (isAfter(currentTime, now)) {
-          // Verifica colisão com agendamentos existentes
+        const isToday = isSameDay(date, now);
+        const isFutureTime = isBefore(now, currentTime);
+
+        if (!isToday || (isToday && isFutureTime)) {
           const isBusy = appointments.some((app) => {
             const appStart = new Date(app.start_time);
             const appEnd = new Date(app.end_time);
-
-            // Lógica de colisão
             return (
-              (currentTime >= appStart && currentTime < appEnd) || // Começa durante
-              (slotEnd > appStart && slotEnd <= appEnd) // Termina durante
+              (currentTime >= appStart && currentTime < appEnd) ||
+              (combinedEndTime > appStart && combinedEndTime <= appEnd) ||
+              (currentTime <= appStart && combinedEndTime >= appEnd)
             );
           });
 
@@ -108,54 +98,99 @@ export class WhatsappController {
             slots.push(new Date(currentTime));
           }
         }
-
-        // Próximo horário
-        currentTime = addMinutes(currentTime, duration);
+        currentTime = addMinutes(currentTime, SLOT_INTERVAL);
       }
     }
-
     return slots;
   }
 
+  // --- FUNÇÃO PARA FORMATAR A LISTA BONITA ---
+  formatSlotsByPeriod(slots: Date[]) {
+    const morning: string[] = [];
+    const afternoon: string[] = [];
+    const night: string[] = [];
+
+    slots.slice(0, 18).forEach((slot, index) => {
+      const hour = getHours(slot);
+      // Formata: "1 - 09:00"
+      // Adiciona um padding para alinhar números de 1 dígito
+      const num = index + 1;
+      const formatted = `*${num}* - ${format(slot, "HH:mm")}`;
+
+      if (hour < 12) morning.push(formatted);
+      else if (hour < 18) afternoon.push(formatted);
+      else night.push(formatted);
+    });
+
+    let message = "";
+
+    // Helper para montar linhas em colunas (opcional, mas fica bonito)
+    const joinInPairs = (list: string[]) => {
+      let result = "";
+      for (let i = 0; i < list.length; i += 2) {
+        const first = list[i];
+        const second = list[i + 1] ? `   ${list[i + 1]}` : "";
+        result += `${first}${second}\n`;
+      }
+      return result;
+    };
+
+    if (morning.length > 0) {
+      message += `🌅 *Manhã*\n${joinInPairs(morning)}\n`;
+    }
+    if (afternoon.length > 0) {
+      message += `☀️ *Tarde*\n${joinInPairs(afternoon)}\n`;
+    }
+    if (night.length > 0) {
+      message += `🌙 *Noite*\n${joinInPairs(night)}\n`;
+    }
+
+    return message;
+  }
+
   async handle(req: Request, res: Response) {
-    const { Body, From } = req.body;
+    const { Body, From, ProfileName } = req.body;
     const phone = From.replace(/\D/g, "");
+    const userName = ProfileName || "Cliente";
 
     if (!sessions.has(From)) {
-      sessions.set(From, { step: "WELCOME" });
+      sessions.set(From, { step: "WELCOME", selectedServices: [] });
     }
 
     const state = sessions.get(From);
     let responseMessage = "";
 
     try {
+      const cmd = Body?.toLowerCase().trim();
       if (
-        Body?.toLowerCase() === "cancelar" ||
-        Body?.toLowerCase() === "oi" ||
-        Body?.toLowerCase() === "menu"
+        ["cancelar", "oi", "ola", "olá", "menu", "início", "inicio"].includes(
+          cmd,
+        )
       ) {
-        sessions.set(From, { step: "WELCOME" });
+        sessions.set(From, { step: "WELCOME", selectedServices: [] });
         state.step = "WELCOME";
       }
 
       // --- PASSO 0: BOAS VINDAS ---
       if (state.step === "WELCOME") {
+        const tenant = await prisma.tenants.findFirst();
+        const shopName = tenant?.name || "Barbearia";
         const professionals = await prisma.users.findMany({
           where: { role: "barber", active: true },
         });
 
         if (professionals.length === 0) {
-          responseMessage =
-            "🚫 Nossos barbeiros estão indisponíveis no momento.";
+          responseMessage = `Olá, *${userName}*! 👋\nBem-vindo à *${shopName}*.\n\nNo momento não temos profissionais disponíveis. 😔`;
         } else {
-          responseMessage = "👋 Olá! Bem-vindo.\nCom quem deseja cortar?\n\n";
+          responseMessage = `Olá, *${userName}*! 👋\nSeja bem-vindo à *${shopName}*! 💈\n\nVamos agendar? Com quem você prefere cortar?\n\n`;
           professionals.forEach((p, index) => {
-            responseMessage += `${index + 1} - ${p.name}\n`;
+            responseMessage += `*${index + 1}* - ${p.name} ✂️\n`;
           });
           sessions.set(From, {
             ...state,
             step: "CHOOSE_PROFESSIONAL",
             professionals,
+            selectedServices: [],
           });
         }
       }
@@ -167,20 +202,20 @@ export class WhatsappController {
 
         if (!selectedPro) {
           responseMessage =
-            "⚠️ Opção inválida. Digite o número do profissional:";
+            "⚠️ *Opção inválida.*\nDigite o número do profissional.";
         } else {
           const services = await prisma.services.findMany({
-            where: { tenant_id: selectedPro.tenant_id },
+            where: { tenant_id: selectedPro.tenant_id, active: true },
           });
 
           if (services.length === 0) {
             responseMessage =
-              "Este profissional não tem serviços configurados.";
+              "Este profissional não possui serviços cadastrados.";
             sessions.delete(From);
           } else {
-            responseMessage = `💈 *${selectedPro.name}*\nEscolha o serviço:\n\n`;
+            responseMessage = `Show! Você escolheu *${selectedPro.name}*. 👊\n\nEscolha o serviço:\n\n`;
             services.forEach((s, index) => {
-              responseMessage += `${index + 1} - ${s.name} (R$ ${s.price})\n`;
+              responseMessage += `*${index + 1}* - ${s.name} (R$ ${Number(s.price).toFixed(2)})\n`;
             });
 
             sessions.set(From, {
@@ -188,8 +223,8 @@ export class WhatsappController {
               step: "CHOOSE_SERVICE",
               proId: selectedPro.id,
               proName: selectedPro.name,
-              tenantId: selectedPro.tenant_id, // Salva o Tenant ID
-              services,
+              tenantId: selectedPro.tenant_id,
+              servicesList: services,
             });
           }
         }
@@ -198,84 +233,160 @@ export class WhatsappController {
       // --- PASSO 2: ESCOLHER SERVIÇO ---
       else if (state.step === "CHOOSE_SERVICE") {
         const choice = parseInt(Body);
-        const selectedService = state.services?.[choice - 1];
+        const selectedService = state.servicesList?.[choice - 1];
 
         if (!selectedService) {
-          responseMessage = "⚠️ Número inválido. Tente novamente:";
+          responseMessage =
+            "⚠️ *Serviço inválido.*\nDigite o número correspondente.";
         } else {
-          responseMessage = `🗓️ *Para quando?*\n\n1 - Hoje\n2 - Amanhã\n3 - Depois de amanhã`;
+          const currentServices = state.selectedServices || [];
+          currentServices.push(selectedService);
+
+          sessions.set(From, {
+            ...state,
+            selectedServices: currentServices,
+            step: "ADD_MORE_SERVICES",
+          });
+
+          responseMessage = `Adicionado: *${selectedService.name}* ✅\n\nGostaria de adicionar mais algum serviço?\n\n*1* - Sim, adicionar outro\n*2* - Não, finalizar agendamento`;
+        }
+      }
+
+      // --- PASSO 2.5: ADICIONAR MAIS? ---
+      else if (state.step === "ADD_MORE_SERVICES") {
+        if (Body === "1") {
+          responseMessage = `Certo, escolha mais um serviço:\n\n`;
+          state.servicesList.forEach((s: any, index: number) => {
+            responseMessage += `*${index + 1}* - ${s.name} (R$ ${Number(s.price).toFixed(2)})\n`;
+          });
+          sessions.set(From, { ...state, step: "CHOOSE_SERVICE" });
+        } else if (Body === "2") {
+          const totalDuration = state.selectedServices.reduce(
+            (acc: number, s: any) => acc + s.duration_minutes,
+            0,
+          );
+          const totalPrice = state.selectedServices.reduce(
+            (acc: number, s: any) => acc + Number(s.price),
+            0,
+          );
+
+          responseMessage =
+            `Perfeito! 👌\n` +
+            `Total: *${state.selectedServices.length} serviço(s)*\n` +
+            `Valor: *R$ ${totalPrice.toFixed(2)}*\n` +
+            `Duração: *${totalDuration} min*\n\n` +
+            `Para quando seria?\n` +
+            `*1* - Hoje\n*2* - Amanhã\nOu uma data (Ex: *27/01*)`;
 
           sessions.set(From, {
             ...state,
             step: "CHOOSE_DATE",
-            serviceId: selectedService.id,
-            serviceName: selectedService.name,
-            duration: selectedService.duration_minutes,
-            price: selectedService.price,
+            totalDuration,
+            totalPrice,
           });
+        } else {
+          responseMessage =
+            "⚠️ Opção inválida. Digite *1* para Sim ou *2* para Não.";
         }
       }
 
-      // --- PASSO 3: ESCOLHER DATA E LISTAR HORÁRIOS ---
+      // --- PASSO 3: ESCOLHER DATA ---
       else if (state.step === "CHOOSE_DATE") {
-        let targetDate = new Date();
-        const choice = Body;
+        let targetDate: Date;
+        const input = Body?.trim();
 
-        if (choice === "1") {
-          /* Hoje */
-        } else if (choice === "2") {
-          targetDate = addDays(targetDate, 1);
-        } else if (choice === "3") {
-          targetDate = addDays(targetDate, 2);
+        if (input === "1") {
+          targetDate = new Date();
+        } else if (input === "2") {
+          targetDate = addDays(new Date(), 1);
         } else {
-          responseMessage = "⚠️ Opção inválida. Digite 1, 2 ou 3.";
-          await this.sendMessage(From, responseMessage);
+          const parsedDate = parse(input, "dd/MM", new Date());
+          if (!isValid(parsedDate)) {
+            await this.sendMessage(
+              From,
+              "⚠️ *Data inválida.* Digite 1, 2 ou dia/mês (Ex: 27/01).",
+            );
+            return res.status(200).end();
+          }
+          targetDate = parsedDate;
+          if (
+            isPast(endOfDay(targetDate)) &&
+            !isSameDay(targetDate, new Date())
+          ) {
+            await this.sendMessage(
+              From,
+              "⚠️ Data passada. Escolha uma futura.",
+            );
+            return res.status(200).end();
+          }
+        }
+
+        const dayOfWeek = getDay(targetDate);
+        const isOpenToday = await prisma.operating_hours.findFirst({
+          where: { tenant_id: state.tenantId, day_of_week: dayOfWeek },
+        });
+
+        if (!isOpenToday) {
+          const diaSemana = format(targetDate, "EEEE", { locale: ptBR });
+          await this.sendMessage(
+            From,
+            `🛑 *Fechado.*\nNão abrimos nas *${diaSemana}s*. Escolha outra data.`,
+          );
           return res.status(200).end();
         }
 
-        // CHAMA A LÓGICA DE HORÁRIOS
         const slots = await this.getAvailableSlots(
           state.proId,
           state.tenantId,
           targetDate,
-          state.duration,
+          state.totalDuration,
         );
 
         if (slots.length === 0) {
-          const diaSemana = format(targetDate, "EEEE", { locale: ptBR });
-          responseMessage = `😔 Sem horários disponíveis para ${diaSemana}. Tente outro dia (Digite Oi).`;
-          sessions.delete(From);
+          responseMessage = `😔 *Agenda cheia.*\nNão temos espaço de ${state.totalDuration}min para esse dia.`;
         } else {
-          responseMessage = `🕒 *Horários para ${format(targetDate, "dd/MM")}*\n\n`;
-
-          // Mostra no máximo 15 horários para não poluir
-          slots.slice(0, 15).forEach((slot, index) => {
-            responseMessage += `${index + 1} - ${format(slot, "HH:mm")}\n`;
+          const diaFormatado = format(targetDate, "dd/MM ' ('EEEE')'", {
+            locale: ptBR,
           });
-          responseMessage += `\nDigite o número do horário:`;
+
+          // --- AQUI ENTRA A FORMATAÇÃO NOVA ---
+          const formattedSlots = this.formatSlotsByPeriod(slots);
+
+          responseMessage =
+            `📅 *Horários livres para ${diaFormatado}:*\n\n` +
+            formattedSlots +
+            `\n👇 *Digite o número do horário:*`;
 
           sessions.set(From, {
             ...state,
             step: "CHOOSE_SLOT",
             availableSlots: slots,
+            targetDate,
           });
         }
       }
 
-      // --- PASSO 4: CONFIRMAÇÃO ---
+      // --- PASSO 4: CONFIRMAR HORÁRIO ---
       else if (state.step === "CHOOSE_SLOT") {
         const choice = parseInt(Body);
         const selectedDate = state.availableSlots?.[choice - 1];
 
         if (!selectedDate) {
-          responseMessage = "⚠️ Horário inválido.";
+          responseMessage =
+            "⚠️ *Horário inválido.* Escolha um número da lista.";
         } else {
+          const dataFinal = format(new Date(selectedDate), "dd/MM 'às' HH:mm");
+          const servicesNames = state.selectedServices
+            .map((s: any) => s.name)
+            .join(" + ");
+
           responseMessage =
             `📝 *Resumo do Agendamento*\n\n` +
-            `💈 ${state.proName}\n` +
-            `✂️ ${state.serviceName}\n` +
-            `📅 ${format(new Date(selectedDate), "dd/MM 'às' HH:mm")}\n` +
-            `💰 R$ ${state.price}\n\n` +
+            `💈 *Profissional:* ${state.proName}\n` +
+            `✂️ *Serviços:* ${servicesNames}\n` +
+            `📅 *Início:* ${dataFinal}\n` +
+            `⏱️ *Duração Total:* ${state.totalDuration} min\n` +
+            `💰 *Valor Total:* R$ ${state.totalPrice.toFixed(2)}\n\n` +
             `Digite *1* para CONFIRMAR ✅\nDigite *2* para CANCELAR ❌`;
 
           sessions.set(From, {
@@ -289,62 +400,62 @@ export class WhatsappController {
       // --- PASSO 5: FINALIZAR ---
       else if (state.step === "CONFIRM_FINAL") {
         if (Body === "1") {
-          // Busca ou Cria Cliente
           let customer = await prisma.customers.findFirst({
             where: { phone: phone, tenant_id: state.tenantId },
           });
-
           if (!customer) {
             customer = await prisma.customers.create({
-              data: {
-                phone: phone,
-                name: "Cliente WhatsApp",
-                tenant_id: state.tenantId,
-              },
+              data: { phone: phone, name: userName, tenant_id: state.tenantId },
             });
           }
 
-          // Cria Agendamento
-          await prisma.appointments.create({
-            data: {
-              start_time: new Date(state.appointmentDate),
-              end_time: addMinutes(
-                new Date(state.appointmentDate),
-                state.duration,
-              ),
-              status: "confirmed",
-              services: { connect: { id: state.serviceId } },
-              users: { connect: { id: state.proId } },
-              customers: { connect: { id: customer.id } },
-              tenants: { connect: { id: state.tenantId } },
-            },
-          });
+          let currentStartTime = new Date(state.appointmentDate);
 
-          responseMessage = "✅ Agendamento Confirmado! Obrigado.";
+          for (const service of state.selectedServices) {
+            const currentEndTime = addMinutes(
+              currentStartTime,
+              service.duration_minutes,
+            );
+
+            await prisma.appointments.create({
+              data: {
+                start_time: currentStartTime,
+                end_time: currentEndTime,
+                status: "confirmed",
+                services: { connect: { id: service.id } },
+                users: { connect: { id: state.proId } },
+                customers: { connect: { id: customer.id } },
+                tenants: { connect: { id: state.tenantId } },
+              },
+            });
+            currentStartTime = currentEndTime;
+          }
+
+          responseMessage =
+            "✅ *Agendamento Confirmado!*\n\nTe esperamos lá! 💈";
           sessions.delete(From);
         } else {
-          responseMessage = "🚫 Agendamento cancelado.";
+          responseMessage = "🚫 Cancelado. Digite *Oi* para recomeçar.";
           sessions.delete(From);
         }
       }
 
-      // LÓGICA DO CRON (Confirmação Barbeiro) MANTIDA
+      // --- CRON JOB ---
       else if (state.step === "CONFIRM_COMPLETION") {
         if (Body === "1") {
           await prisma.appointments.update({
             where: { id: state.appointmentId },
             data: { status: "completed" },
           });
-          responseMessage = "✅ Concluído!";
+          responseMessage = "✅ *Show!* Concluído e faturado. 💰";
         } else if (Body === "2") {
           await prisma.appointments.update({
             where: { id: state.appointmentId },
             data: { status: "canceled" },
           });
-          responseMessage = "🚫 Cancelado!";
+          responseMessage = "🚫 Cancelado.";
         } else {
-          responseMessage = "Responda 1 ou 2.";
-          await this.sendMessage(From, responseMessage);
+          await this.sendMessage(From, "Digite 1 ou 2.");
           return res.status(200).end();
         }
         sessions.delete(From);
@@ -353,7 +464,7 @@ export class WhatsappController {
       if (responseMessage) await this.sendMessage(From, responseMessage);
     } catch (error) {
       console.error("Erro Bot:", error);
-      await this.sendMessage(From, "Erro no sistema. Digite Oi.");
+      await this.sendMessage(From, "❌ Erro. Digite *Oi* para reiniciar.");
       sessions.delete(From);
     }
 

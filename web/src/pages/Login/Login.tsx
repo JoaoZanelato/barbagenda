@@ -1,28 +1,42 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, Scissors } from 'lucide-react';
-import { api } from '../../lib/api';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Lock, Mail, Scissors } from "lucide-react";
+import { api } from "../../lib/api";
 
-import { Button } from '../../components/ui/Button/Button';
-import { Input } from '../../components/ui/Input/Input';
-import { Card, CardContent, CardHeader } from '../../components/ui/Card/Card';
+import { Button } from "../../components/ui/Button/Button";
+import { Input } from "../../components/ui/Input/Input";
+import { Card, CardContent, CardHeader } from "../../components/ui/Card/Card";
 
-import styles from './Login.module.css';
+import styles from "./Login.module.css";
 
 export function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
+
     try {
-      await api.post('/login', { email, password });
-      navigate('/dashboard');
+      const response = await api.post("/login", { email, password });
+
+      // Pega o usuário da resposta
+      const { user } = response.data;
+
+      // Salva no localStorage para usar em outras telas (ex: mostrar nome no Header)
+      localStorage.setItem("barber:user", JSON.stringify(user));
+
+      // --- O PULO DO GATO 🐈 ---
+      // Verifica o cargo e redireciona
+      if (user.role === "super_admin") {
+        navigate("/saas"); // Painel do Dono do SaaS
+      } else {
+        navigate("/dashboard"); // Painel da Barbearia
+      }
     } catch (error) {
-      alert('Erro ao entrar.');
+      alert("Erro ao entrar. Verifique seus dados.");
     } finally {
       setIsLoading(false);
     }
@@ -43,22 +57,22 @@ export function Login() {
 
         <CardContent>
           <form onSubmit={handleLogin} className={styles.form}>
-            <Input 
-              label="E-mail" 
-              type="email" 
+            <Input
+              label="E-mail"
+              type="email"
               placeholder="admin@barber.com"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               icon={<Mail />}
               required
             />
-            
-            <Input 
-              label="Senha" 
-              type="password" 
+
+            <Input
+              label="Senha"
+              type="password"
               placeholder="••••••"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               icon={<Lock />}
               required
             />
