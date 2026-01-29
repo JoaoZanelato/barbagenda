@@ -1,132 +1,148 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
+import { parseISO, addMinutes, isValid } from "date-fns";
 
 export class AppointmentController {
-  // 1. LISTAR
+  // Listar agendamentos (Para o Painel do Barbeiro)
   async index(req: Request, res: Response) {
-    try {
-      const tenant_id = (req as any).tenant_id;
+    const { start_date, end_date } = req.query;
+    const tenantId = req.user_tenant_id; // Pega do token
 
-      const appointments = await prisma.appointments.findMany({
-        where: { tenant_id },
-        include: {
-          services: true,
-          users: true,
-          customers: true, // Incluímos o cliente para mostrar o nome/telefone
-        },
-        orderBy: { start_time: "desc" },
-      });
+    // Filtros básicos de data
+    const where: any = { tenant_id: tenantId };
 
-      // Mapeamos para o formato que o Frontend espera
-      const formattedAppointments = appointments.map((app) => ({
-        id: app.id,
-        // Se tiver cliente vinculado, usa o telefone dele. Senão, vazio.
-        customer_phone: app.customers?.phone || "Sem telefone",
-        customer_name: app.customers?.name || "Cliente",
-        start_time: app.start_time,
-        status: app.status,
-        services: app.services,
-        users: app.users,
-      }));
-
-      return res.json(formattedAppointments);
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: "Erro ao listar agendamentos" });
+    if (start_date && end_date) {
+      where.start_time = {
+        gte: parseISO(String(start_date)),
+        lte: parseISO(String(end_date)),
+      };
     }
+
+    const appointments = await prisma.appointments.findMany({
+      where,
+      include: {
+        customers: true,
+        services: true,
+        users: true,
+      },
+      orderBy: { start_time: "asc" },
+    });
+
+    return res.json(appointments);
   }
 
-  // 2. CRIAR MANUAL (CORRIGIDO)
+  // Agendamento Simples (Legado ou Admin manual)
   async store(req: Request, res: Response) {
+    const { professionalId, customerId, serviceId, startTime } = req.body;
+    const tenantId = req.user_tenant_id;
+
+    const service = await prisma.services.findUnique({
+      where: { id: serviceId },
+    });
+    if (!service)
+      return res.status(400).json({ error: "Serviço não encontrado" });
+
+    const startDate = parseISO(startTime);
+    const endDate = addMinutes(startDate, service.duration_minutes);
+
+    const appointment = await prisma.appointments.create({
+      data: {
+        start_time: startDate,
+        end_time: endDate,
+        status: "confirmed",
+        tenant_id: tenantId,
+        user_id: professionalId,
+        customer_id: customerId,
+        service_id: serviceId,
+      },
+    });
+
+    return res.json(appointment);
+  }
+
+  // --- NOVO: Agendamento Múltiplo (Para o App Mobile) ---
+  // Permite agendar "Corte" + "Barba" na sequência
+  async createBatch(req: Request, res: Response) {
+    // Nota: O App envia um array de 'services' [{id, duration}]
+    const { professionalId, customerName, customerPhone, startTime, services } =
+      req.body;
+
+    // O tenantId vem do Token (se logado) ou do Body (se for app público do cliente)
+    // Para simplificar, vamos assumir que o App manda o tenantId ou usa um fixo por enquanto
+    // Se o usuário estiver logado:
+    const tenantId = req.user_tenant_id;
+
+    if (!services || services.length === 0) {
+      return res.status(400).json({ error: "Nenhum serviço selecionado." });
+    }
+
     try {
-      const tenant_id = (req as any).tenant_id;
-      // Recebemos 'user_id' do front, mas no banco é o profissional
-      const { customer_phone, service_id, user_id, start_time, status } =
-        req.body;
-
-      if (!customer_phone || !service_id || !user_id || !start_time) {
-        return res.status(400).json({ error: "Faltam dados obrigatórios." });
-      }
-
-      const dateStart = new Date(start_time);
-
-      // Busca duração do serviço
-      const service = await prisma.services.findUnique({
-        where: { id: service_id },
-      });
-      if (!service)
-        return res.status(400).json({ error: "Serviço não encontrado" });
-
-      const dateEnd = new Date(
-        dateStart.getTime() + service.duration_minutes * 60000,
-      );
-
-      // --- LÓGICA DE CLIENTE (NOVO) ---
-      // Verifica se cliente já existe pelo telefone nesta barbearia
+      // 1. Busca ou Cria o Cliente pelo Telefone
       let customer = await prisma.customers.findFirst({
-        where: {
-          phone: customer_phone,
-          tenant_id,
-        },
+        where: { phone: customerPhone, tenant_id: tenantId },
       });
 
-      // Se não existir, cria um cliente novo automaticamente
       if (!customer) {
         customer = await prisma.customers.create({
           data: {
-            name: "Cliente Manual", // Nome provisório ou vindo do input se tiver
-            phone: customer_phone,
-            tenant_id,
+            name: customerName || "Cliente App",
+            phone: customerPhone,
+            tenant_id: tenantId,
           },
         });
       }
 
-      // --- CRIAÇÃO DO AGENDAMENTO (CORRIGIDO) ---
-      const appointment = await prisma.appointments.create({
-        data: {
-          start_time: dateStart,
-          end_time: dateEnd,
-          status: status || "confirmed",
+      // 2. Loop para criar os agendamentos sequenciais
+      let currentStartTime = parseISO(startTime); // Data inicial escolhida
 
-          // RELACIONAMENTOS (Sintaxe correta do Prisma)
-          tenants: {
-            connect: { id: tenant_id },
+      if (!isValid(currentStartTime)) {
+        return res.status(400).json({ error: "Data inválida." });
+      }
+
+      const createdAppointments = [];
+
+      for (const service of services) {
+        // Calcula fim deste serviço
+        const currentEndTime = addMinutes(currentStartTime, service.duration);
+
+        const appointment = await prisma.appointments.create({
+          data: {
+            start_time: currentStartTime,
+            end_time: currentEndTime,
+            status: "confirmed",
+            // Conecta usando IDs
+            services: { connect: { id: service.id } },
+            users: { connect: { id: professionalId } },
+            customers: { connect: { id: customer.id } },
+            tenants: { connect: { id: tenantId } },
           },
-          services: {
-            connect: { id: service_id },
-          },
-          users: {
-            connect: { id: user_id }, // Conecta ao profissional
-          },
-          customers: {
-            connect: { id: customer.id }, // Conecta ao cliente encontrado/criado
-          },
-        },
+        });
+
+        createdAppointments.push(appointment);
+
+        // O próximo serviço começa exatamente quando este termina
+        currentStartTime = currentEndTime;
+      }
+
+      return res.status(201).json({
+        message: "Agendamento realizado com sucesso!",
+        appointments: createdAppointments,
       });
-
-      return res.json(appointment);
     } catch (error) {
-      console.error("Erro ao criar agendamento:", error); // Log detalhado
-      return res
-        .status(500)
-        .json({ error: "Erro interno ao criar agendamento" });
+      console.error(error);
+      return res.status(500).json({ error: "Erro ao processar agendamento." });
     }
   }
 
-  // 3. ATUALIZAR STATUS
   async update(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
+    const { id } = req.params;
+    const { status } = req.body;
 
-      const appointment = await prisma.appointments.update({
-        where: { id },
-        data: { status },
-      });
+    const appointment = await prisma.appointments.update({
+      where: { id },
+      data: { status },
+    });
 
-      return res.json(appointment);
-    } catch (error) {
-      return res.status(500).json({ error: "Erro ao atualizar status" });
-    }
+    return res.json(appointment);
   }
 }

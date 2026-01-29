@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- TABELA GLOBAL DE USUÁRIOS DO APP ---
+model app_clients {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @db.VarChar(255)
+  phone         String   @unique @db.VarChar(20)
+  pin_hash      String   @db.VarChar(255) // PIN de 4 dígitos criptografado
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+}
+// ----------------------------------------
+
 model appointments {
   id                      String         @id @default(uuid()) @db.Uuid
   tenant_id               String?        @db.Uuid
@@ -64,8 +74,8 @@ model operating_hours {
   id          String   @id @default(uuid()) @db.Uuid
   tenant_id   String?  @db.Uuid
   day_of_week Int      
-  open_time   String   @db.VarChar(5) // "08:00"
-  close_time  String   @db.VarChar(5) // "12:00"
+  open_time   String   @db.VarChar(5) 
+  close_time  String   @db.VarChar(5) 
   is_closed   Boolean? @default(false)
   
   tenants     tenants? @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
