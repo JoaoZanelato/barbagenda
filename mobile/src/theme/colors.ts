@@ -1,25 +1,28 @@
 export const colors = {
-  // Fundos mais profundos e ricos (evita o preto 100% chapado)
-  background: "#09090B", // Um preto muito profundo, quase carvão
-  surface: "#121214", // Um pouco mais claro para cards
-  surfaceHighlight: "#27272A", // Para bordas sutis e inputs
+  // CAMADA 1: Fundo Infinito
+  background: "#09090B", // Preto muito profundo (quase absoluto)
 
-  // Paleta Dourada de Luxo
-  primary: "#D4AF37", // Ouro Metálico Clássico (em vez do amarelo vivo)
-  primaryDark: "#B5932A", // Dourado mais escuro para estados de "pressionado" ou bordas
-  primaryLight: "rgba(212, 175, 55, 0.15)", // Dourado transparente para fundos de seleção
+  // CAMADA 2: Superfícies (Cartões)
+  // Mudamos de #121214 para #18181B (Zinc 900) - Um pouco mais claro/azulado
+  surface: "#18181B",
+
+  // CAMADA 3: Realces e Bordas
+  // Mudamos para um cinza mais visível para criar contorno
+  surfaceHighlight: "#27272A",
+  borderSubtle: "#3F3F46", // Borda mais forte para separar o preto do preto
+
+  // DOURADO DE LUXO
+  primary: "#D4AF37",
+  primaryDark: "#B5932A",
+  primaryLight: "rgba(212, 175, 55, 0.15)", // Fundo dourado translúcido
 
   // Textos
-  text: "#FAFAFA", // Quase branco, mais suave aos olhos
-  textSecondary: "#A1A1AA", // Cinza médio elegante
+  text: "#FAFAFA", // Branco Gelo
+  textSecondary: "#A1A1AA", // Cinza Claro
 
-  // Funcionais
-  success: "#16A34A",
-  error: "#DC2626",
+  success: "#10B981", // Verde Esmeralda (Mais vibrante que o anterior)
+  error: "#EF4444", // Vermelho Rubi
+
   black: "#000000",
   white: "#FFFFFF",
-
-  // Bordas de luxo (finas)
-  borderGold: "#D4AF37",
-  borderSubtle: "#27272A",
 };

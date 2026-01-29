@@ -45,24 +45,41 @@ router.get("/mobile/tenants", async (req, res) => {
 
 // App Mobile - Dados da Barbearia
 // App Mobile - Dados da Barbearia Selecionada
+// App Mobile - Dados da Barbearia Selecionada
 router.get("/mobile/tenants/:id/details", async (req, res) => {
   const { id } = req.params;
 
-  // Busca APENAS Profissionais com cargo 'barber' e que estão ATIVOS
-  const pros = await prisma.users.findMany({
-    where: {
-      tenant_id: id,
-      role: "barber", // Garante que Admin não aparece
-      active: true, // Garante que demitidos não aparecem
-    },
-    select: { id: true, name: true },
-  });
+  console.log(`[DEBUG CLIENTE] Buscando dados da barbearia ID: ${id}`);
 
-  const services = await prisma.services.findMany({
-    where: { tenant_id: id, active: true },
-  });
+  try {
+    // 1. Busca Profissionais (Barbeiros Ativos)
+    const pros = await prisma.users.findMany({
+      where: {
+        tenant_id: id,
+        role: "barber", // Apenas barbeiros
+        active: true, // Apenas ativos (evita deletados/soft-delete)
+      },
+      select: { id: true, name: true },
+    });
 
-  return res.json({ professionals: pros, services });
+    console.log(`[DEBUG CLIENTE] Barbeiros encontrados: ${pros.length}`, pros);
+
+    // 2. Busca Serviços (Ativos)
+    const services = await prisma.services.findMany({
+      where: {
+        tenant_id: id,
+        active: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
+    console.log(`[DEBUG CLIENTE] Serviços encontrados: ${services.length}`);
+
+    return res.json({ professionals: pros, services });
+  } catch (error) {
+    console.error("[DEBUG ERROR]", error);
+    return res.status(500).json({ error: "Erro ao buscar detalhes" });
+  }
 });
 
 // Disponibilidade

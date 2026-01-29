@@ -17,7 +17,7 @@ export function useScheduling(
   const [services, setServices] = useState<any[]>([]);
   const [slots, setSlots] = useState<string[]>([]);
 
-  // Seleções do Usuário
+  // Seleções
   const [selectedPro, setSelectedPro] = useState("");
   const [selectedServices, setSelectedServices] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState(
@@ -25,7 +25,6 @@ export function useScheduling(
   );
   const [selectedSlot, setSelectedSlot] = useState("");
 
-  // Totais
   const totalDuration = selectedServices.reduce(
     (acc, s) => acc + s.duration_minutes,
     0,
@@ -35,11 +34,10 @@ export function useScheduling(
     0,
   );
 
-  // 1. Carregar dados ao abrir o modal
+  // 1. Carregar dados ao abrir
   useEffect(() => {
     if (isOpen && tenantId) {
       setLoading(true);
-      // Busca detalhes da barbearia específica
       api
         .get(`/mobile/tenants/${tenantId}/details`)
         .then((res) => {
@@ -48,31 +46,38 @@ export function useScheduling(
           setStep(1);
           setSelectedServices([]);
           setSelectedSlot("");
+          setSlots([]);
         })
-        .catch(() => Alert.alert("Erro", "Não foi possível carregar os dados."))
+        .catch(() => Alert.alert("Erro", "Falha ao carregar dados."))
         .finally(() => setLoading(false));
     }
   }, [isOpen, tenantId]);
 
-  // 2. Carregar horários quando a data/pro/serviços mudarem
+  // 2. Carregar horários (Disponibilidade)
   useEffect(() => {
     if (step === 3 && selectedPro && selectedDate && totalDuration > 0) {
       setLoading(true);
+      setSlots([]); // Limpa enquanto carrega
+
       api
         .get("/disponibilidade", {
           params: {
             date: selectedDate,
-            professionalId: selectedPro,
-            duration: totalDuration,
+            barberId: selectedPro,
+            tenantId,
           },
         })
         .then((res) => {
-          setSlots(res.data);
+          // Pega o array dentro do objeto retornado
+          setSlots(res.data.horariosLivres || []);
         })
-        .catch(() => setSlots([]))
+        .catch((err) => {
+          console.log("Erro ao buscar slots:", err);
+          setSlots([]);
+        })
         .finally(() => setLoading(false));
     }
-  }, [step, selectedDate, selectedPro, totalDuration]);
+  }, [step, selectedDate, selectedPro, totalDuration, tenantId]);
 
   function toggleService(service: any) {
     if (selectedServices.find((s) => s.id === service.id)) {
@@ -82,13 +87,19 @@ export function useScheduling(
     }
   }
 
+  // 👇 CORREÇÃO AQUI
   async function handleFinish() {
+    if (!selectedSlot) return;
     setLoading(true);
+
     try {
+      // Combina Data (YYYY-MM-DD) + Hora (HH:mm) para formar ISO válido
+      // Ex: 2026-01-29T14:30:00
+      const fullDateTime = `${selectedDate}T${selectedSlot}:00`;
+
       await api.post("/mobile/appointments", {
         professionalId: selectedPro,
-        startTime: selectedSlot,
-        // O backend pegará o cliente pelo token JWT
+        startTime: fullDateTime, // AGORA SIM É UMA DATA VÁLIDA
         services: selectedServices.map((s) => ({
           id: s.id,
           duration: s.duration_minutes,
@@ -96,6 +107,7 @@ export function useScheduling(
       });
       onSuccess();
     } catch (err) {
+      console.log(err);
       Alert.alert("Erro", "Não foi possível realizar o agendamento.");
     } finally {
       setLoading(false);

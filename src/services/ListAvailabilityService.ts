@@ -7,6 +7,8 @@ import {
   format,
   isBefore,
   addMinutes,
+  isSameDay,
+  isAfter,
 } from "date-fns";
 
 interface Request {
@@ -33,16 +35,10 @@ export class ListAvailabilityService {
       };
     }
 
-    // --- CORREÇÃO DE FUSO HORÁRIO AQUI ---
-    // Em vez de 'format', usamos o toISOString para pegar o valor UTC puro (09:00)
-    // O slice(11, 16) pega exatamente os caracteres "HH:mm" da string ISO
-    let horaAtualStr = regraHorario.open_time.toISOString().slice(11, 16);
-    let horaFimStr = regraHorario.close_time.toISOString().slice(11, 16);
-    // -------------------------------------
+    let horaAtualStr = regraHorario.open_time;
+    let horaFimStr = regraHorario.close_time;
 
     // 2. Buscando Ocupações
-    // Para garantir que buscamos o dia certo independente do fuso, usamos start/end do dia UTC se necessário
-    // Mas por enquanto, vamos manter local para simplificar a query do banco
     const startDay = startOfDay(dataSolicitada);
     const endDay = endOfDay(dataSolicitada);
 
@@ -64,20 +60,33 @@ export class ListAvailabilityService {
     // 3. Gerando Slots
     const slotsDisponiveis = [];
 
-    // Criamos as datas completas combinando "2026-01-26" com "09:00"
+    // Converte Strings "09:00" para Objeto Date completo naquele dia
     let cursorTempo = parseISO(`${date}T${horaAtualStr}`);
     const fimDoDia = parseISO(`${date}T${horaFimStr}`);
+    const agora = new Date();
 
-    const duracaoServico = 45;
+    const duracaoServico = 45; // Poderia vir dinâmico do frontend se necessário
 
-    // Loop para gerar os slots
-    while (isBefore(addMinutes(cursorTempo, duracaoServico), fimDoDia)) {
+    // Loop: Enquanto (Inicio + Duração) <= Fim do Dia
+    // Usamos timestamp para comparar números puros (mais seguro que isBefore/isEqual combinados)
+    while (
+      addMinutes(cursorTempo, duracaoServico).getTime() <= fimDoDia.getTime()
+    ) {
       const slotFim = addMinutes(cursorTempo, duracaoServico);
 
-      // Verificação de colisão simples
+      // Regra de Passado: Se é hoje e horário < agora, pula
+      // Adicionamos 5min de tolerância
+      if (
+        isSameDay(dataSolicitada, agora) &&
+        isBefore(addMinutes(cursorTempo, 5), agora)
+      ) {
+        cursorTempo = addMinutes(cursorTempo, 30);
+        continue;
+      }
+
+      // Colisão
       const estaOcupado =
         agendamentos.some((appt) => {
-          // Ajuste fino: converter para timestamp para comparar números puros
           return (
             cursorTempo.getTime() < appt.end_time.getTime() &&
             slotFim.getTime() > appt.start_time.getTime()
@@ -93,6 +102,7 @@ export class ListAvailabilityService {
       if (!estaOcupado) {
         slotsDisponiveis.push(format(cursorTempo, "HH:mm"));
       }
+
       cursorTempo = addMinutes(cursorTempo, 30);
     }
 

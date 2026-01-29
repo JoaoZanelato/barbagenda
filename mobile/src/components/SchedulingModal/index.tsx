@@ -1,26 +1,35 @@
 import React from "react";
 import {
+  Modal,
   View,
   Text,
-  Modal,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
-  TextInput,
+  FlatList,
+  ScrollView,
 } from "react-native";
-import { X, Calendar, User, Check, Scissors } from "lucide-react-native";
-import { format } from "date-fns";
+// 👇 Adicionei ChevronLeft e ChevronRight
+import {
+  X,
+  User,
+  Calendar as CalendarIcon,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react-native";
 import { styles } from "./styles";
 import { useScheduling } from "./useScheduling";
 import { colors } from "../../theme/colors";
-import { Button } from "../Button"; // Usando nosso novo componente
-import { Input } from "../Input"; // Usando nosso novo componente
+import { Button } from "../Button";
+// 👇 Adicionei addDays, subDays e parseISO
+import { format, addDays, subDays, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  tenantId?: string;
+  tenantId: string;
 }
 
 export function SchedulingModal({
@@ -44,230 +53,291 @@ export function SchedulingModal({
     setSelectedDate,
     selectedSlot,
     setSelectedSlot,
-    totalDuration,
     totalPrice,
     handleFinish,
   } = useScheduling(isOpen, onClose, onSuccess, tenantId);
 
+  // Helpers para mudar a data
+  const handlePrevDay = () => {
+    const prev = subDays(parseISO(selectedDate), 1);
+    // Impede voltar para antes de hoje (Opcional, mas recomendado)
+    if (prev < new Date().setHours(0, 0, 0, 0)) return;
+    setSelectedDate(format(prev, "yyyy-MM-dd"));
+    setSelectedSlot(""); // Limpa seleção anterior
+  };
+
+  const handleNextDay = () => {
+    const next = addDays(parseISO(selectedDate), 1);
+    setSelectedDate(format(next, "yyyy-MM-dd"));
+    setSelectedSlot("");
+  };
+
   return (
     <Modal
       visible={isOpen}
-      animationType="slide"
       transparent
+      animationType="fade"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Novo Agendamento</Text>
+            <Text style={styles.title}>
+              {step === 1
+                ? "Escolha o Profissional"
+                : step === 2
+                  ? "Selecione os Serviços"
+                  : "Data e Horário"}
+            </Text>
             <TouchableOpacity onPress={onClose}>
               <X size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.content}>
-            {/* STEP 1: PROFISSIONAL */}
-            {step === 1 && (
-              <View>
-                <Text style={styles.stepTitle}>1. Escolha o Profissional</Text>
-                {loading ? (
-                  <ActivityIndicator
-                    color={colors.primary}
-                    style={styles.loadingContainer}
-                  />
-                ) : (
-                  pros.map((pro) => (
+          {loading ? (
+            <View
+              style={[
+                styles.content,
+                {
+                  justifyContent: "center",
+                  alignItems: "center",
+                  minHeight: 200,
+                },
+              ]}
+            >
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={{ color: colors.textSecondary, marginTop: 16 }}>
+                Carregando...
+              </Text>
+            </View>
+          ) : (
+            <View style={{ flex: 1 }}>
+              {/* PASSO 1: PROFISSIONAIS */}
+              {step === 1 && (
+                <FlatList
+                  data={pros}
+                  keyExtractor={(item) => item.id}
+                  style={styles.content}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                      Nenhum profissional disponível.
+                    </Text>
+                  }
+                  renderItem={({ item }) => (
                     <TouchableOpacity
-                      key={pro.id}
-                      onPress={() => setSelectedPro(pro.id)}
                       style={[
-                        styles.card,
-                        selectedPro === pro.id && styles.cardSelected,
+                        styles.optionCard,
+                        selectedPro === item.id && styles.optionSelected,
                       ]}
-                    >
-                      <User
-                        size={20}
-                        color={
-                          selectedPro === pro.id
-                            ? colors.text
-                            : colors.textSecondary
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.cardText,
-                          selectedPro === pro.id && styles.textSelected,
-                        ]}
-                      >
-                        {pro.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
-                )}
-              </View>
-            )}
-
-            {/* STEP 2: SERVIÇOS */}
-            {step === 2 && (
-              <View>
-                <Text style={styles.stepTitle}>2. Selecione os Serviços</Text>
-                {services.map((svc) => {
-                  const isSelected = !!selectedServices.find(
-                    (s) => s.id === svc.id,
-                  );
-                  return (
-                    <TouchableOpacity
-                      key={svc.id}
-                      onPress={() => toggleService(svc)}
-                      style={[
-                        styles.serviceRow,
-                        isSelected && styles.cardSelected,
-                      ]}
+                      onPress={() => setSelectedPro(item.id)}
                     >
                       <View
                         style={{
                           flexDirection: "row",
                           alignItems: "center",
-                          gap: 10,
+                          gap: 12,
                         }}
                       >
-                        <View
+                        <User
+                          size={20}
+                          color={
+                            selectedPro === item.id
+                              ? colors.primary
+                              : colors.textSecondary
+                          }
+                        />
+                        <Text
                           style={[
-                            styles.checkbox,
-                            isSelected && styles.checkboxSelected,
+                            styles.optionText,
+                            selectedPro === item.id && styles.textSelected,
                           ]}
                         >
-                          {isSelected && (
-                            <Check size={12} color={colors.black} />
-                          )}
-                        </View>
-                        <View>
-                          <Text style={styles.textWhite}>{svc.name}</Text>
-                          <Text style={styles.textGray}>
-                            {svc.duration_minutes} min
+                          {item.name}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+
+              {/* PASSO 2: SERVIÇOS */}
+              {step === 2 && (
+                <FlatList
+                  data={services}
+                  keyExtractor={(item) => item.id}
+                  style={styles.content}
+                  renderItem={({ item }) => {
+                    const isSelected = !!selectedServices.find(
+                      (s) => s.id === item.id,
+                    );
+                    return (
+                      <TouchableOpacity
+                        style={[
+                          styles.optionCard,
+                          isSelected && styles.optionSelected,
+                        ]}
+                        onPress={() => toggleService(item)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[
+                              styles.optionText,
+                              isSelected && styles.textSelected,
+                            ]}
+                          >
+                            {item.name}
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.textSecondary,
+                              fontSize: 12,
+                            }}
+                          >
+                            {item.duration_minutes} min
                           </Text>
                         </View>
-                      </View>
-                      <Text style={styles.textGold}>R$ {svc.price}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-                <Text style={styles.summaryText}>
-                  Total: {totalDuration} min | R$ {totalPrice}
-                </Text>
-              </View>
-            )}
-
-            {/* STEP 3: DATA E HORA */}
-            {step === 3 && (
-              <View>
-                <Text style={styles.stepTitle}>3. Escolha Data e Hora</Text>
-                <Input
-                  placeholder="AAAA-MM-DD"
-                  value={selectedDate}
-                  onChangeText={setSelectedDate}
-                  icon={<Calendar size={20} color={colors.textSecondary} />}
-                />
-
-                {loading ? (
-                  <ActivityIndicator
-                    color={colors.primary}
-                    style={styles.loadingContainer}
-                  />
-                ) : (
-                  <View style={styles.slotsGrid}>
-                    {slots.map((slot) => (
-                      <TouchableOpacity
-                        key={slot}
-                        onPress={() => setSelectedSlot(slot)}
-                        style={[
-                          styles.slotBadge,
-                          selectedSlot === slot && styles.slotSelected,
-                        ]}
-                      >
                         <Text
-                          style={
-                            selectedSlot === slot
-                              ? styles.textBlack
-                              : styles.textGray
-                          }
+                          style={[
+                            styles.priceText,
+                            isSelected && styles.priceSelected,
+                          ]}
                         >
-                          {format(new Date(slot), "HH:mm")}
+                          R$ {Number(item.price).toFixed(2)}
                         </Text>
                       </TouchableOpacity>
-                    ))}
-                    {slots.length === 0 && !loading && (
-                      <Text style={styles.textGray}>
-                        Nenhum horário disponível para esta data.
+                    );
+                  }}
+                />
+              )}
+
+              {/* PASSO 3: DATA E HORÁRIO (Com Seletor de Data) */}
+              {step === 3 && (
+                <ScrollView style={styles.content}>
+                  {/* 👇 SELETOR DE DATA */}
+                  <View
+                    style={{
+                      marginBottom: 24,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      backgroundColor: colors.surface,
+                      padding: 12,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <TouchableOpacity
+                      onPress={handlePrevDay}
+                      style={{ padding: 8 }}
+                    >
+                      <ChevronLeft size={24} color={colors.primary} />
+                    </TouchableOpacity>
+
+                    <View style={{ alignItems: "center" }}>
+                      <CalendarIcon
+                        size={20}
+                        color={colors.primary}
+                        style={{ marginBottom: 4 }}
+                      />
+                      <Text
+                        style={{
+                          color: colors.text,
+                          fontSize: 16,
+                          fontFamily: "PlayfairDisplay_700Bold",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {format(parseISO(selectedDate), "EEE, dd 'de' MMMM", {
+                          locale: ptBR,
+                        })}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={handleNextDay}
+                      style={{ padding: 8 }}
+                    >
+                      <ChevronRight size={24} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      marginBottom: 12,
+                      textAlign: "center",
+                    }}
+                  >
+                    Horários disponíveis
+                  </Text>
+
+                  {/* Grade de Horários */}
+                  <View style={styles.timeSlotsContainer}>
+                    {slots.length > 0 ? (
+                      slots.map((time) => (
+                        <TouchableOpacity
+                          key={time}
+                          style={[
+                            styles.timeSlot,
+                            selectedSlot === time && styles.timeSlotSelected,
+                          ]}
+                          onPress={() => setSelectedSlot(time)}
+                        >
+                          <Text
+                            style={[
+                              styles.timeText,
+                              selectedSlot === time && styles.timeTextSelected,
+                            ]}
+                          >
+                            {time}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <Text style={styles.emptyText}>
+                        Agenda cheia ou indisponível.
                       </Text>
                     )}
                   </View>
-                )}
-              </View>
-            )}
+                </ScrollView>
+              )}
+            </View>
+          )}
 
-            {/* STEP 4: RESUMO */}
-            {step === 4 && (
-              <View>
-                <Text style={styles.stepTitle}>4. Confirmar Agendamento</Text>
-                <View
-                  style={[
-                    styles.card,
-                    {
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      gap: 5,
-                    },
-                  ]}
-                >
-                  <Text style={styles.textWhite}>
-                    📅 {selectedDate} às{" "}
-                    {selectedSlot && format(new Date(selectedSlot), "HH:mm")}
-                  </Text>
-                  <Text style={styles.textGray}>
-                    ✂️ {selectedServices.length} serviços selecionados
-                  </Text>
-                  <Text style={styles.textGold}>
-                    💰 Total: R$ {totalPrice.toFixed(2)}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </ScrollView>
-
-          {/* FOOTER */}
+          {/* Footer */}
           <View style={styles.footer}>
-            {step > 1 ? (
-              <Button
-                title="Voltar"
+            {step > 1 && (
+              <TouchableOpacity
                 onPress={() => setStep(step - 1)}
-                variant="outline"
-                style={{ width: "45%" }}
-              />
-            ) : (
-              <View style={{ width: "45%" }} />
+                style={styles.backButton}
+              >
+                <Text style={styles.backText}>Voltar</Text>
+              </TouchableOpacity>
             )}
 
-            {step < 4 ? (
-              <Button
-                title="Próximo"
-                onPress={() => setStep(step + 1)}
-                disabled={
-                  (step === 1 && !selectedPro) ||
-                  (step === 2 && selectedServices.length === 0) ||
-                  (step === 3 && !selectedSlot)
-                }
-                style={{ width: "45%" }}
-              />
-            ) : (
-              <Button
-                title="Confirmar"
-                onPress={handleFinish}
-                loading={loading}
-                style={{ width: "45%", backgroundColor: colors.success }}
-              />
-            )}
+            <View style={{ flex: 1 }}>
+              {step === 1 && (
+                <Button
+                  title="Continuar"
+                  onPress={() => setStep(2)}
+                  disabled={!selectedPro}
+                />
+              )}
+              {step === 2 && (
+                <Button
+                  title={`Confirmar (R$ ${totalPrice.toFixed(2)})`}
+                  onPress={() => setStep(3)}
+                  disabled={selectedServices.length === 0}
+                />
+              )}
+              {step === 3 && (
+                <Button
+                  title="Finalizar Agendamento"
+                  onPress={handleFinish}
+                  disabled={!selectedSlot}
+                />
+              )}
+            </View>
           </View>
         </View>
       </View>

@@ -1,117 +1,172 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Dimensions, Platform } from "react-native";
 import { colors } from "../../theme/colors";
+import { fontFamily } from "../../theme/fonts";
+
+const { height } = Dimensions.get("window");
 
 export const styles = StyleSheet.create({
+  // Fundo escuro transparente
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
+
+  // A "Caixa" do Modal
   container: {
-    backgroundColor: "#18181B",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: "90%",
+    width: "100%",
+    height: height * 0.85, // Altura Fixa de 85% da tela
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+    display: "flex",
+    flexDirection: "column", // Garante estrutura vertical
+  },
+
+  // Cabeçalho Fixo
+  header: {
+    height: 70,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+    backgroundColor: colors.surface,
+  },
+
+  title: {
+    fontFamily: fontFamily.heading,
+    fontSize: 20,
+    color: colors.text,
+    letterSpacing: 0.5,
+  },
+
+  // Conteúdo Rolável (Flex 1 para ocupar todo o espaço disponível)
+  content: {
+    flex: 1,
+    padding: 20,
     width: "100%",
   },
 
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceHighlight,
-  },
-  title: { color: colors.text, fontSize: 18, fontWeight: "bold" },
-
-  content: { padding: 20 },
-  loadingContainer: { marginTop: 40 },
-
-  stepTitle: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    marginBottom: 12,
-  },
-
-  // Cards de Seleção
-  card: {
+  // --- CARDS DE SELEÇÃO ---
+  optionCard: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 8,
-    backgroundColor: colors.surface,
-    marginBottom: 8,
-    gap: 10,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.surfaceHighlight,
-  },
-  cardSelected: {
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
-    borderColor: colors.primary,
-  },
-  cardText: { color: colors.textSecondary, fontSize: 16 },
-  textSelected: { color: colors.text, fontWeight: "bold" },
-
-  // Serviço
-  serviceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    marginBottom: 8,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.textSecondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkboxSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    borderColor: colors.borderSubtle,
+    gap: 12,
   },
 
-  // Horários
-  slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
-  slotBadge: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.surfaceHighlight,
-    backgroundColor: colors.surface,
-  },
-  slotSelected: {
-    backgroundColor: colors.primary,
+  optionSelected: {
     borderColor: colors.primary,
+    backgroundColor: "rgba(212, 175, 55, 0.05)",
   },
 
-  // Footer
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.surfaceHighlight,
-    backgroundColor: colors.background,
+  optionText: {
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 16,
+    color: colors.textSecondary,
+    flex: 1,
   },
-  summaryText: {
+
+  textSelected: {
+    color: colors.primary,
+  },
+
+  priceText: {
+    fontFamily: fontFamily.bodyBold,
     color: colors.text,
-    textAlign: "right",
-    marginTop: 10,
-    fontWeight: "bold",
+    fontSize: 14,
   },
 
-  // Textos úteis
-  textWhite: { color: colors.text },
-  textGray: { color: colors.textSecondary },
-  textGold: { color: colors.primary, fontWeight: "bold" },
-  textBlack: { color: colors.black, fontWeight: "bold" },
+  priceSelected: {
+    color: colors.primary,
+  },
+
+  // --- GRADE DE HORÁRIOS ---
+  timeSlotsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    // 'flex-start' corrige o buraco no meio da lista
+    justifyContent: "flex-start",
+    gap: 10,
+    paddingBottom: 20,
+  },
+
+  timeSlot: {
+    width: "30%", // Largura para 3 colunas (aprox)
+    paddingVertical: 14,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  timeSlotSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+
+  timeText: {
+    fontFamily: fontFamily.bodyBold,
+    color: colors.text,
+    fontSize: 14,
+  },
+
+  timeTextSelected: {
+    color: colors.background,
+  },
+
+  // Rodapé Fixo (Altura Dinâmica)
+  footer: {
+    // Altura automática baseada no conteúdo (botão)
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+
+    // Espaço extra para iPhones sem botão físico
+    paddingBottom: Platform.OS === "ios" ? 34 : 24,
+
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+    backgroundColor: colors.background,
+
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+
+  backButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+
+  backText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    textDecorationLine: "underline",
+  },
+
+  emptyText: {
+    textAlign: "center",
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    marginTop: 20,
+  },
 });

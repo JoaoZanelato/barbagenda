@@ -6,13 +6,13 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
-import { LogOut } from "lucide-react-native";
+import { LogOut, MapPin } from "lucide-react-native";
 import { styles } from "./styles";
 import { useClientHome } from "./useClientHome";
 import { colors } from "../../../theme/colors";
 
-// Importando o Modal que criamos anteriormente (certifique-se de que ele existe neste caminho)
-import { SchedulingModal } from "../../../components/SchedulingModal/index";
+// 👇 Importação do Modal
+import { SchedulingModal } from "../../../components/SchedulingModal";
 
 interface Props {
   onLogout: () => void;
@@ -45,7 +45,6 @@ export function ClientHome({ onLogout }: Props) {
           <LogOut size={24} color={colors.error} />
         </TouchableOpacity>
       </View>
-
       <FlatList
         data={tenants}
         keyExtractor={(item) => item.id}
@@ -65,20 +64,20 @@ export function ClientHome({ onLogout }: Props) {
             </View>
             <View>
               <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardDesc}>Toque para agendar</Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <MapPin size={12} color={colors.primary} />
+                <Text style={styles.cardDesc}> Toque para agendar</Text>
+              </View>
             </View>
           </TouchableOpacity>
         )}
       />
-
-      {/* Modal de Agendamento */}
       {selectedTenant && (
         <SchedulingModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onSuccess={handleSuccess}
-          // Se o seu SchedulingModal precisar do ID da barbearia, passe aqui:
-          // tenantId={selectedTenant.id}
+          tenantId={selectedTenant.id} // <--- ADICIONE ESTA LINHA!
         />
       )}
     </View>

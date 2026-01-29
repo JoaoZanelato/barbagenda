@@ -1,13 +1,13 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://192.168.0.106:3000",
+  baseURL: "http://192.168.0.101:3000",
   timeout: 10000, // 10 segundos de timeout
 });
 
 // Interceptor opcional para logs (ajuda a debugar no mobile)
 api.interceptors.request.use((config) => {
-  // console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
+  console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
   return config;
 });
 

@@ -17,8 +17,8 @@ export const styles = StyleSheet.create({
   },
 
   logoImage: {
-    width: 240, // Logo maior
-    height: 240,
+    width: 320, // Logo maior
+    height: 320,
     marginBottom: 20,
   },
 
