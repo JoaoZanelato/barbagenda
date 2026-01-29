@@ -26,17 +26,19 @@ export function useClientAuth(onLoginSuccess: (token: string) => void) {
         // Registro
         const data = await authService.registerClient({ name, phone, pin });
 
-        // Se a API já retornar token no registro, loga direto
         if (data.token) {
           onLoginSuccess(data.token);
         } else {
-          // Senão, manda ir pro login
           setStep("login");
           Alert.alert("Sucesso", "Conta criada! Agora faça login.");
         }
       }
-    } catch (error) {
-      Alert.alert("Erro", "Verifique seus dados. O PIN deve ter 4 dígitos.");
+    } catch (error: any) {
+      // 👇 AQUI ESTÁ A MÁGICA: Pegamos a mensagem real do backend
+      const errorMessage =
+        error.response?.data?.error || "Erro de conexão ou servidor.";
+      Alert.alert("Ops!", errorMessage);
+      console.log("Erro detalhado:", error);
     } finally {
       setLoading(false);
     }
@@ -44,7 +46,6 @@ export function useClientAuth(onLoginSuccess: (token: string) => void) {
 
   function toggleStep() {
     setStep((prev) => (prev === "login" ? "register" : "login"));
-    // Limpa campos sensíveis ao trocar
     setPin("");
   }
 
