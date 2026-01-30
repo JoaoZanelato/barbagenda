@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { DashboardController } from "../controllers/DashboardController";
-import { AuthController } from "../controllers/AuthController"; // 👈 TEM QUE TER AS CHAVES { }
+import { AuthController } from "../controllers/AuthController";
 import { MobileAuthController } from "../controllers/MobileAuthController";
 import { ServiceController } from "../controllers/ServiceController";
 import { ProfessionalController } from "../controllers/ProfessionalController";
@@ -15,7 +15,7 @@ const router = Router();
 
 // Instanciar Controllers
 const dashboardController = new DashboardController();
-const authController = new AuthController(); // 👈 O erro estava aqui
+const authController = new AuthController();
 const serviceController = new ServiceController();
 const professionalController = new ProfessionalController();
 const availabilityController = new AvailabilityController();
@@ -35,7 +35,7 @@ router.post("/tenants", tenantController.store);
 router.post("/mobile/register", mobileAuthController.register);
 router.post("/mobile/login", mobileAuthController.login);
 
-// App Mobile - Listagem Pública
+// App Mobile - Listagem de Barbearias
 router.get("/mobile/tenants", async (req, res) => {
   const tenants = await prisma.tenants.findMany({
     select: { id: true, name: true, slug: true },
@@ -43,54 +43,34 @@ router.get("/mobile/tenants", async (req, res) => {
   return res.json(tenants);
 });
 
-// App Mobile - Dados da Barbearia
-// App Mobile - Dados da Barbearia Selecionada
 // App Mobile - Dados da Barbearia Selecionada
 router.get("/mobile/tenants/:id/details", async (req, res) => {
   const { id } = req.params;
-
-  console.log(`[DEBUG CLIENTE] Buscando dados da barbearia ID: ${id}`);
-
   try {
-    // 1. Busca Profissionais (Barbeiros Ativos)
     const pros = await prisma.users.findMany({
-      where: {
-        tenant_id: id,
-        role: "barber", // Apenas barbeiros
-        active: true, // Apenas ativos (evita deletados/soft-delete)
-      },
+      where: { tenant_id: id, role: "barber", active: true },
       select: { id: true, name: true },
     });
-
-    console.log(`[DEBUG CLIENTE] Barbeiros encontrados: ${pros.length}`, pros);
-
-    // 2. Busca Serviços (Ativos)
     const services = await prisma.services.findMany({
-      where: {
-        tenant_id: id,
-        active: true,
-      },
+      where: { tenant_id: id, active: true },
       orderBy: { name: "asc" },
     });
-
-    console.log(`[DEBUG CLIENTE] Serviços encontrados: ${services.length}`);
-
     return res.json({ professionals: pros, services });
   } catch (error) {
-    console.error("[DEBUG ERROR]", error);
     return res.status(500).json({ error: "Erro ao buscar detalhes" });
   }
 });
 
-// Disponibilidade
+// Disponibilidade (Público ou Privado, dependendo da regra)
 router.get("/disponibilidade", availabilityController.handle);
 
 // ==========================================================
 // 📱 ROTAS PRIVADAS DO APP (Mobile)
 // ==========================================================
 router.post("/mobile/appointments", ensureMobileAuth, async (req, res) => {
-  req.body.customerPhone = req.body.authenticatedPhone;
-  return appointmentController.createBatch(req, res);
+  // Injeta o telefone autenticado se necessário, ou usa a lógica do controller
+  // Chama o método .store (que unificamos)
+  return appointmentController.store(req, res);
 });
 
 // ==========================================================
@@ -98,16 +78,25 @@ router.post("/mobile/appointments", ensureMobileAuth, async (req, res) => {
 // ==========================================================
 router.use(ensureAuthenticated);
 
+// Dashboard
+router.get("/dashboard/metrics", dashboardController.index);
+
+// Tenants (Super Admin)
 router.get("/tenants", tenantController.index);
+
+// Serviços
 router.post("/services", serviceController.create);
 router.get("/services", serviceController.list);
 router.delete("/services/:id", serviceController.delete);
+
+// Profissionais
 router.post("/professionals", professionalController.create);
 router.get("/professionals", professionalController.list);
 router.delete("/professionals/:id", professionalController.delete);
-router.get("/appointments", appointmentController.index);
-router.post("/appointments", appointmentController.store);
-router.patch("/appointments/:id", appointmentController.update);
-router.get("/dashboard/metrics", dashboardController.index);
+
+// Agendamentos
+router.get("/appointments", appointmentController.index); // Agora existe!
+router.post("/appointments", appointmentController.store); // Agora existe!
+router.patch("/appointments/:id", appointmentController.update); // Agora existe!
 
 export { router };

@@ -3,49 +3,97 @@ import { prisma } from "../prisma/client";
 import { parseISO, isValid, addMinutes } from "date-fns";
 
 export class AppointmentController {
-  async create(req: Request, res: Response) {
+  // 1. LISTAR (Admin/Dashboard)
+  async index(req: Request, res: Response) {
+    const tenant_id = (req as any).tenant_id;
+
     try {
-      const { professionalId, startTime, services } = req.body;
-      const customerId = req.user_id; // Vem do token JWT (Autenticado)
-      const tenantId = (req as any).tenant_id; // Vem do Middleware
+      const appointments = await prisma.appointments.findMany({
+        where: { tenant_id },
+        include: {
+          customers: { select: { name: true, phone: true } },
+          users: { select: { name: true } }, // 'users' é o profissional
+          services: true,
+        },
+        orderBy: { start_time: "desc" },
+      });
+
+      return res.json(appointments);
+    } catch (error) {
+      return res.status(500).json({ error: "Erro ao listar agendamentos." });
+    }
+  }
+
+  // 2. CRIAR (Unificado: Web Admin + Mobile App)
+  async store(req: Request, res: Response) {
+    try {
+      let { professionalId, startTime, services, customerId, tenantId } =
+        req.body;
+
+      // Se for Admin logado, o tenant_id vem do middleware
+      if ((req as any).tenant_id) {
+        tenantId = (req as any).tenant_id;
+      }
 
       console.log("--- TENTATIVA DE AGENDAMENTO ---");
-      console.log("Recebido:", {
-        professionalId,
-        startTime,
-        servicesCount: services?.length,
-      });
 
-      // 1. Validações Básicas
-      if (!professionalId || !startTime || !services || services.length === 0) {
-        return res.status(400).json({ error: "Dados incompletos." });
+      // 1. RESGATE DO TENANT (Se não veio, tenta descobrir pelo Profissional)
+      if (!tenantId && professionalId) {
+        const professional = await prisma.users.findUnique({
+          where: { id: professionalId },
+          select: { tenant_id: true },
+        });
+        if (professional) tenantId = professional.tenant_id;
       }
 
-      // 2. Tratamento da Data
-      // O frontend envia algo como "2026-01-29T14:30:00"
+      if (!tenantId) {
+        return res
+          .status(400)
+          .json({ error: "Barbearia (Tenant) não identificada." });
+      }
+
+      // 2. IDENTIFICAÇÃO DO CLIENTE (Mobile)
+      if (!customerId && req.body.authenticatedPhone) {
+        const phone = req.body.authenticatedPhone;
+        const name = req.body.authenticatedName || "Cliente App";
+
+        // Busca ou Cria o Cliente
+        let customer = await prisma.customers.findFirst({
+          where: { phone, tenant_id: tenantId },
+        });
+
+        if (!customer) {
+          customer = await prisma.customers.create({
+            data: { name, phone, tenant_id: tenantId },
+          });
+        }
+        customerId = customer.id;
+      }
+
+      // Validações
+      if (
+        !professionalId ||
+        !startTime ||
+        !services ||
+        services.length === 0 ||
+        !customerId
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Dados incompletos. Verifique profissional, horário, serviços e cliente.",
+          });
+      }
+
+      // 3. DATA
       const startDate = parseISO(startTime);
-
       if (!isValid(startDate)) {
-        console.error("Data Inválida:", startTime);
-        return res.status(400).json({ error: "Formato de data inválido." });
+        return res.status(400).json({ error: "Data inválida." });
       }
 
-      // 3. Verifica se o Cliente e o Profissional existem (Evita erro de Foreign Key)
-      const customerExists = await prisma.customers.findUnique({
-        where: { id: customerId },
-      });
-      const professionalExists = await prisma.users.findUnique({
-        where: { id: professionalId },
-      });
-
-      if (!customerExists)
-        return res.status(404).json({ error: "Cliente não encontrado." });
-      if (!professionalExists)
-        return res.status(404).json({ error: "Profissional não encontrado." });
-
-      // 4. Criação com Transação (Calcula totais e salva)
+      // 4. TRANSAÇÃO (Cálculos + Criação)
       const appointment = await prisma.$transaction(async (tx) => {
-        // A. Calcula Duração e Preço Total consultando o banco (Segurança)
         let totalDuration = 0;
         let totalPrice = 0;
 
@@ -59,42 +107,54 @@ export class AppointmentController {
           }
         }
 
-        // B. Calcula hora do término
         const endDate = addMinutes(startDate, totalDuration);
 
-        // C. Cria o Agendamento
-        // IMPORTANTE: Ajuste a parte 'services_appointments' conforme seu schema.prisma
-        // Se você usa N:N explícito, use 'create'. Se for implícito, use 'connect'.
-        // Abaixo assumo uma tabela de junção padrão 'services_appointments' ou similar.
+        // ✅ CORREÇÃO PRINCIPAL:
+        // 1. Pegamos apenas o primeiro serviço (pois o schema é 1:N)
+        // 2. Usamos 'connect' para TODAS as relações
+        const mainServiceId = services[0].id;
 
-        const newAppointment = await tx.appointments.create({
+        const newAppt = await tx.appointments.create({
           data: {
-            customer_id: customerId,
-            professional_id: professionalId,
-            tenant_id: tenantId,
-            start_time: startDate, // Data Objeto JS
-            end_time: endDate, // Data Objeto JS
+            start_time: startDate,
+            end_time: endDate,
             status: "SCHEDULED",
             total_price: totalPrice,
 
-            // Caso 2: Se o prisma gerencia a relação automaticamente (Implicit N:N)
-            services: {
-              connect: services.map((s: any) => ({ id: s.id })),
-            },
+            // 👇 SINTAXE CORRETA DO PRISMA (Connect)
+            customers: { connect: { id: customerId } },
+            users: { connect: { id: professionalId } },
+            tenants: { connect: { id: tenantId } },
+            services: { connect: { id: mainServiceId } },
           },
         });
 
-        return newAppointment;
+        return newAppt;
       });
 
-      console.log("Agendamento Criado com Sucesso ID:", appointment.id);
+      console.log("Agendamento Criado:", appointment.id);
       return res.status(201).json(appointment);
     } catch (error) {
       console.error("ERRO CRÍTICO NO BACKEND:", error);
-      // O console mostrará se for erro de chave estrangeira, sintaxe, etc.
       return res
         .status(500)
         .json({ error: "Erro interno ao processar agendamento." });
+    }
+  }
+
+  // 3. ATUALIZAR STATUS
+  async update(req: Request, res: Response) {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+      const appointment = await prisma.appointments.update({
+        where: { id },
+        data: { status },
+      });
+      return res.json(appointment);
+    } catch (error) {
+      return res.status(400).json({ error: "Erro ao atualizar agendamento." });
     }
   }
 }

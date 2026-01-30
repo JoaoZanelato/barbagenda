@@ -9,34 +9,37 @@ datasource db {
 
 // --- TABELA GLOBAL DE USUÁRIOS DO APP ---
 model app_clients {
-  id            String   @id @default(uuid()) @db.Uuid
-  name          String   @db.VarChar(255)
-  phone         String   @unique @db.VarChar(20)
-  pin_hash      String   @db.VarChar(255) // PIN de 4 dígitos criptografado
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(255)
+  phone      String   @unique @db.VarChar(20)
+  pin_hash   String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
 }
-// ----------------------------------------
 
 model appointments {
-  id                      String         @id @default(uuid()) @db.Uuid
-  tenant_id               String?        @db.Uuid
-  customer_id             String?        @db.Uuid
-  professional_id         String?        @db.Uuid
-  service_id              String?        @db.Uuid
-  start_time              DateTime       @db.Timestamptz(6)
-  end_time                DateTime       @db.Timestamptz(6)
-  status                  String?        @default("scheduled") @db.VarChar(20)
-  original_appointment_id String?        @db.Uuid
-  reschedule_count        Int?           @default(0)
-  created_at              DateTime?      @default(now()) @db.Timestamptz(6)
-  updated_at              DateTime?      @default(now()) @db.Timestamptz(6)
+  id                      String    @id @default(uuid()) @db.Uuid
+  tenant_id               String?   @db.Uuid
+  customer_id             String?   @db.Uuid
+  professional_id         String?   @db.Uuid
+  service_id              String?   @db.Uuid
+  start_time              DateTime  @db.Timestamptz(6)
+  end_time                DateTime  @db.Timestamptz(6)
+  status                  String?   @default("scheduled") @db.VarChar(20)
   
-  customers               customers?     @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  appointments            appointments?  @relation("appointmentsToappointments", fields: [original_appointment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  other_appointments      appointments[] @relation("appointmentsToappointments")
-  users                   users?         @relation(fields: [professional_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  services                services?      @relation(fields: [service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  tenants                 tenants?       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  // 👇 ADICIONADO: Preço total do agendamento
+  total_price             Decimal?  @db.Decimal(10, 2)
+
+  original_appointment_id String?   @db.Uuid
+  reschedule_count        Int?      @default(0)
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime? @default(now()) @db.Timestamptz(6)
+
+  customers          customers?    @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  appointments       appointments? @relation("appointmentsToappointments", fields: [original_appointment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_appointments appointments[] @relation("appointmentsToappointments")
+  users              users?        @relation(fields: [professional_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  services           services?     @relation(fields: [service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenants            tenants?      @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([tenant_id, start_time], map: "idx_appointments_date")
   @@index([professional_id, start_time, end_time], map: "idx_appointments_range")
@@ -50,22 +53,22 @@ model blocked_slots {
   end_time   DateTime  @db.Timestamptz(6)
   reason     String?   @db.VarChar(100)
   created_at DateTime? @default(now()) @db.Timestamptz(6)
-  
-  tenants    tenants?  @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users      users?    @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  tenants tenants? @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users   users?   @relation(fields: [user_id], references: [id], onUpdate: NoAction)
 }
 
 model customers {
-  id            String         @id @default(uuid()) @db.Uuid
-  tenant_id     String?        @db.Uuid
-  name          String         @db.VarChar(255)
-  phone         String         @db.VarChar(20)
+  id            String    @id @default(uuid()) @db.Uuid
+  tenant_id     String?   @db.Uuid
+  name          String    @db.VarChar(255)
+  phone         String    @db.VarChar(20)
   notes         String?
-  last_visit_at DateTime?      @db.Timestamptz(6)
-  created_at    DateTime?      @default(now()) @db.Timestamptz(6)
-  
-  appointments  appointments[]
-  tenants       tenants?       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  last_visit_at DateTime? @db.Timestamptz(6)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+
+  appointments appointments[]
+  tenants      tenants?       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([phone, tenant_id], map: "idx_customers_phone_tenant")
 }
@@ -73,56 +76,56 @@ model customers {
 model operating_hours {
   id          String   @id @default(uuid()) @db.Uuid
   tenant_id   String?  @db.Uuid
-  day_of_week Int      
-  open_time   String   @db.VarChar(5) 
-  close_time  String   @db.VarChar(5) 
+  day_of_week Int
+  open_time   String   @db.VarChar(5)
+  close_time  String   @db.VarChar(5)
   is_closed   Boolean? @default(false)
-  
-  tenants     tenants? @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  tenants tenants? @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model services {
-  id               String         @id @default(uuid()) @db.Uuid
-  tenant_id        String?        @db.Uuid
-  name             String         @db.VarChar(100)
+  id               String    @id @default(uuid()) @db.Uuid
+  tenant_id        String?   @db.Uuid
+  name             String    @db.VarChar(100)
   description      String?
-  price            Decimal        @db.Decimal(10, 2)
+  price            Decimal   @db.Decimal(10, 2)
   duration_minutes Int
-  active           Boolean?       @default(true)
-  created_at       DateTime?      @default(now()) @db.Timestamptz(6)
-  
-  appointments     appointments[]
-  tenants          tenants?       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  active           Boolean?  @default(true)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+
+  appointments appointments[]
+  tenants      tenants?       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model tenants {
-  id                  String            @id @default(uuid()) @db.Uuid
-  name                String            @db.VarChar(255)
-  slug                String            @unique @db.VarChar(50)
-  plan_status         String?           @default("trial") @db.VarChar(20)
-  created_at          DateTime?         @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime?         @default(now()) @db.Timestamptz(6)
-  
-  appointments        appointments[]
-  blocked_slots       blocked_slots[]
-  customers           customers[]
-  operating_hours     operating_hours[]
-  services            services[]
-  users               users[]
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(255)
+  slug        String    @unique @db.VarChar(50)
+  plan_status String?   @default("trial") @db.VarChar(20)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  appointments    appointments[]
+  blocked_slots   blocked_slots[]
+  customers       customers[]
+  operating_hours operating_hours[]
+  services        services[]
+  users           users[]
 }
 
 model users {
-  id            String   @id @default(uuid()) @db.Uuid
-  tenant_id     String?  @db.Uuid
-  name          String   @db.VarChar(255)
-  email         String   @unique @db.VarChar(255)
-  password_hash String   @db.VarChar(255)
-  phone         String?  @db.VarChar(20)
-  role          String?  @default("admin") @db.VarChar(20)
-  active        Boolean? @default(true)
+  id            String    @id @default(uuid()) @db.Uuid
+  tenant_id     String?   @db.Uuid
+  name          String    @db.VarChar(255)
+  email         String    @unique @db.VarChar(255)
+  password_hash String    @db.VarChar(255)
+  phone         String?   @db.VarChar(20)
+  role          String?   @default("admin") @db.VarChar(20)
+  active        Boolean?  @default(true)
   created_at    DateTime? @default(now()) @db.Timestamptz(6)
-  
+
   appointments  appointments[]
   blocked_slots blocked_slots[]
-  tenants       tenants? @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenants       tenants?        @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
