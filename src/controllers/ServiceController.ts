@@ -5,7 +5,7 @@ export class ServiceController {
   // CRIAR SERVIÇO
   async create(req: Request, res: Response) {
     const { name, price, duration, description } = req.body;
-    const tenant_id = (req as any).tenant_id;
+    const tenant_id = req.tenant_id;
 
     const service = await prisma.services.create({
       data: {

@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
-import { parseISO, isValid, addMinutes } from "date-fns";
+import { parseISO, isValid, addMinutes, format } from "date-fns"; // 👈 Importe 'format'
+import { NotificationService } from "../services/NotificationService"; // 👈 Importe o Service
+
+const notificationService = new NotificationService(); // 👈 Instancie
 
 export class AppointmentController {
-  // 1. LISTAR (Admin/Dashboard)
+  // 1. LISTAR
   async index(req: Request, res: Response) {
     const tenant_id = (req as any).tenant_id;
 
@@ -12,7 +15,7 @@ export class AppointmentController {
         where: { tenant_id },
         include: {
           customers: { select: { name: true, phone: true } },
-          users: { select: { name: true } }, // 'users' é o profissional
+          users: { select: { name: true } },
           services: true,
         },
         orderBy: { start_time: "desc" },
@@ -24,20 +27,18 @@ export class AppointmentController {
     }
   }
 
-  // 2. CRIAR (Unificado: Web Admin + Mobile App)
+  // 2. CRIAR
   async store(req: Request, res: Response) {
     try {
       let { professionalId, startTime, services, customerId, tenantId } =
         req.body;
 
-      // Se for Admin logado, o tenant_id vem do middleware
       if ((req as any).tenant_id) {
         tenantId = (req as any).tenant_id;
       }
 
       console.log("--- TENTATIVA DE AGENDAMENTO ---");
 
-      // 1. RESGATE DO TENANT (Se não veio, tenta descobrir pelo Profissional)
       if (!tenantId && professionalId) {
         const professional = await prisma.users.findUnique({
           where: { id: professionalId },
@@ -52,12 +53,11 @@ export class AppointmentController {
           .json({ error: "Barbearia (Tenant) não identificada." });
       }
 
-      // 2. IDENTIFICAÇÃO DO CLIENTE (Mobile)
+      // Identificação Cliente Mobile
       if (!customerId && req.body.authenticatedPhone) {
         const phone = req.body.authenticatedPhone;
         const name = req.body.authenticatedName || "Cliente App";
 
-        // Busca ou Cria o Cliente
         let customer = await prisma.customers.findFirst({
           where: { phone, tenant_id: tenantId },
         });
@@ -70,7 +70,6 @@ export class AppointmentController {
         customerId = customer.id;
       }
 
-      // Validações
       if (
         !professionalId ||
         !startTime ||
@@ -78,21 +77,15 @@ export class AppointmentController {
         services.length === 0 ||
         !customerId
       ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Dados incompletos. Verifique profissional, horário, serviços e cliente.",
-          });
+        return res.status(400).json({ error: "Dados incompletos." });
       }
 
-      // 3. DATA
       const startDate = parseISO(startTime);
       if (!isValid(startDate)) {
         return res.status(400).json({ error: "Data inválida." });
       }
 
-      // 4. TRANSAÇÃO (Cálculos + Criação)
+      // TRANSAÇÃO
       const appointment = await prisma.$transaction(async (tx) => {
         let totalDuration = 0;
         let totalPrice = 0;
@@ -108,10 +101,6 @@ export class AppointmentController {
         }
 
         const endDate = addMinutes(startDate, totalDuration);
-
-        // ✅ CORREÇÃO PRINCIPAL:
-        // 1. Pegamos apenas o primeiro serviço (pois o schema é 1:N)
-        // 2. Usamos 'connect' para TODAS as relações
         const mainServiceId = services[0].id;
 
         const newAppt = await tx.appointments.create({
@@ -120,8 +109,6 @@ export class AppointmentController {
             end_time: endDate,
             status: "SCHEDULED",
             total_price: totalPrice,
-
-            // 👇 SINTAXE CORRETA DO PRISMA (Connect)
             customers: { connect: { id: customerId } },
             users: { connect: { id: professionalId } },
             tenants: { connect: { id: tenantId } },
@@ -131,6 +118,28 @@ export class AppointmentController {
 
         return newAppt;
       });
+
+      // 👇 ENVIO DE NOTIFICAÇÃO
+      try {
+        const professional = await prisma.users.findUnique({
+          where: { id: professionalId },
+          select: { push_token: true },
+        });
+
+        if (professional?.push_token) {
+          const dateFormatted = format(startDate, "dd/MM 'às' HH:mm");
+          await notificationService.send(
+            professional.push_token,
+            "Novo Agendamento! ✂️",
+            `Novo corte agendado para ${dateFormatted}.`,
+          );
+        }
+      } catch (notifError) {
+        console.error(
+          "Erro ao enviar notificação (não bloqueante):",
+          notifError,
+        );
+      }
 
       console.log("Agendamento Criado:", appointment.id);
       return res.status(201).json(appointment);

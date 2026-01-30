@@ -39,7 +39,7 @@ export class MobileAuthController {
       // Gera token para já logar direto após registro
       const token = sign(
         { phone: user.phone, clientId: user.id },
-        "SEGREDO_SUPER_SECRETO_DO_JWT_MOBILE",
+        process.env.JWT_SECRET as string,
         { expiresIn: "30d" },
       );
 
@@ -78,7 +78,7 @@ export class MobileAuthController {
 
       const token = sign(
         { phone: user.phone, clientId: user.id },
-        "SEGREDO_SUPER_SECRETO_DO_JWT_MOBILE", // Use .env em produção!
+        process.env.JWT_SECRET as string, // Use .env em produção!
         { expiresIn: "30d" },
       );
 

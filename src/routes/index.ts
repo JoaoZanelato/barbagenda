@@ -7,8 +7,9 @@ import { ProfessionalController } from "../controllers/ProfessionalController";
 import { AvailabilityController } from "../controllers/AvailabilityController";
 import { AppointmentController } from "../controllers/AppointmentController";
 import { TenantController } from "../controllers/TenantController";
-import { ensureAuthenticated } from "../middlewares/ensureAuthenticated";
-import { ensureMobileAuth } from "../middlewares/ensureMobileAuth";
+import { NotificationController } from "../controllers/NotificationController"; // 👈 NOVO
+import { ensureAuthenticated } from "../controllers/middlewares/ensureAuthenticated";
+import { ensureMobileAuth } from "../controllers/middlewares/ensureMobileAuth";
 import { prisma } from "../prisma/client";
 
 const router = Router();
@@ -22,6 +23,7 @@ const availabilityController = new AvailabilityController();
 const appointmentController = new AppointmentController();
 const tenantController = new TenantController();
 const mobileAuthController = new MobileAuthController();
+const notificationController = new NotificationController(); // 👈 NOVO
 
 // ==========================================================
 // 🔓 ROTAS PÚBLICAS
@@ -61,27 +63,35 @@ router.get("/mobile/tenants/:id/details", async (req, res) => {
   }
 });
 
-// Disponibilidade (Público ou Privado, dependendo da regra)
+// Disponibilidade
 router.get("/disponibilidade", availabilityController.handle);
 
 // ==========================================================
 // 📱 ROTAS PRIVADAS DO APP (Mobile)
 // ==========================================================
 router.post("/mobile/appointments", ensureMobileAuth, async (req, res) => {
-  // Injeta o telefone autenticado se necessário, ou usa a lógica do controller
-  // Chama o método .store (que unificamos)
   return appointmentController.store(req, res);
 });
 
+// 👇 ROTA NOVA: Salvar token do cliente
+router.post(
+  "/mobile/notifications/token",
+  ensureMobileAuth,
+  notificationController.saveClientToken,
+);
+
 // ==========================================================
-// 🔒 ROTAS PRIVADAS WEB (Admin)
+// 🔒 ROTAS PRIVADAS WEB/BARBEIRO
 // ==========================================================
 router.use(ensureAuthenticated);
+
+// 👇 ROTA NOVA: Salvar token do barbeiro
+router.post("/notifications/token", notificationController.saveBarberToken);
 
 // Dashboard
 router.get("/dashboard/metrics", dashboardController.index);
 
-// Tenants (Super Admin)
+// Tenants
 router.get("/tenants", tenantController.index);
 
 // Serviços
@@ -95,8 +105,8 @@ router.get("/professionals", professionalController.list);
 router.delete("/professionals/:id", professionalController.delete);
 
 // Agendamentos
-router.get("/appointments", appointmentController.index); // Agora existe!
-router.post("/appointments", appointmentController.store); // Agora existe!
-router.patch("/appointments/:id", appointmentController.update); // Agora existe!
+router.get("/appointments", appointmentController.index);
+router.post("/appointments", appointmentController.store);
+router.patch("/appointments/:id", appointmentController.update);
 
 export { router };

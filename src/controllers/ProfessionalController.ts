@@ -6,7 +6,7 @@ export class ProfessionalController {
   // CRIAR PROFISSIONAL
   async create(req: Request, res: Response) {
     const { name, email, password } = req.body;
-    const tenant_id = (req as any).tenant_id;
+    const tenant_id = req.tenant_id;
 
     // Verifica se já existe
     const userExists = await prisma.users.findUnique({ where: { email } });

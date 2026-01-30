@@ -10,8 +10,9 @@ import { LogOut, MapPin } from "lucide-react-native";
 import { styles } from "./styles";
 import { useClientHome } from "./useClientHome";
 import { colors } from "../../../theme/colors";
+import { useNotifications } from "../../../hooks/useNotifications"; // 👈 Importe
 
-// 👇 Importação do Modal
+// Importação do Modal
 import { SchedulingModal } from "../../../components/SchedulingModal";
 
 interface Props {
@@ -19,6 +20,9 @@ interface Props {
 }
 
 export function ClientHome({ onLogout }: Props) {
+  // 👇 Ativa Notificações (Cliente = false)
+  useNotifications(false);
+
   const {
     tenants,
     loading,
@@ -77,7 +81,7 @@ export function ClientHome({ onLogout }: Props) {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onSuccess={handleSuccess}
-          tenantId={selectedTenant.id} // <--- ADICIONE ESTA LINHA!
+          tenantId={selectedTenant.id}
         />
       )}
     </View>

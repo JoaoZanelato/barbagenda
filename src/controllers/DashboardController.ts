@@ -5,7 +5,7 @@ import { startOfDay, endOfDay } from "date-fns";
 export class DashboardController {
   async index(req: Request, res: Response) {
     try {
-      const tenant_id = (req as any).tenant_id;
+      const tenant_id = req.tenant_id;
 
       const today = new Date();
 

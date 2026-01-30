@@ -22,7 +22,7 @@ export function ensureMobileAuth(
   try {
     const { phone, clientId } = verify(
       token,
-      "SEGREDO_SUPER_SECRETO_DO_JWT_MOBILE",
+      process.env.JWT_SECRET as string,
     ) as IPayload;
 
     // Injeta dados do usuário na requisição

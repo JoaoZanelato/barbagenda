@@ -30,8 +30,12 @@ import { useBarberDashboard } from "./useBarberDashboard";
 import { colors } from "../../../theme/colors";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
+import { useNotifications } from "../../../hooks/useNotifications"; // 👈 Importe
 
 export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
+  // 👇 Ativa Notificações (Barbeiro = true)
+  useNotifications(true);
+
   // Hook com toda a lógica de negócio
   const {
     activeTab,
@@ -54,14 +58,13 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
     handleUpdateStatus,
   } = useBarberDashboard();
 
-  // Estados locais para os formulários de criação (Serviço/Profissional)
+  // Estados locais
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [newDuration, setNewDuration] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  // Helper para abrir modais de criação e limpar campos
   const openCreationModal = (type: "service" | "professional") => {
     setNewName("");
     setNewPrice("");
@@ -71,13 +74,11 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
     setModalType(type);
   };
 
-  // Helper para abrir detalhes do agendamento
   const openAppointmentDetails = (appointment: any) => {
     setSelectedAppointment(appointment);
     setModalType("appointment_details");
   };
 
-  // Renderização das Abas
   const renderTab = (key: any, label: string, Icon: any) => (
     <TouchableOpacity
       onPress={() => setActiveTab(key)}
@@ -232,7 +233,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                   </View>
                 )}
               />
-              {/* FAB - Botão Flutuante */}
               <TouchableOpacity
                 style={styles.fab}
                 onPress={() => openCreationModal("service")}
@@ -304,9 +304,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </View>
       )}
 
-      {/* ==================== MODAIS ==================== */}
-
-      {/* 1. Modal de Detalhes do Agendamento */}
+      {/* Modais omitidos para brevidade (permanecem iguais) */}
       <Modal
         visible={modalType === "appointment_details"}
         transparent
@@ -390,7 +388,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </View>
       </Modal>
 
-      {/* 2. Modal de Criação (Serviço ou Profissional) */}
       <Modal
         visible={modalType === "service" || modalType === "professional"}
         transparent

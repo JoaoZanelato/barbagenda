@@ -33,7 +33,7 @@ export class AuthController {
           tenantId: user.tenant_id,
           role: user.role,
         },
-        "SEGREDO_SUPER_SECRETO_DO_JWT",
+        process.env.JWT_SECRET as string,
         {
           subject: user.id,
           expiresIn: "30d",

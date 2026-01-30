@@ -31,7 +31,7 @@ export function ensureAuthenticated(
   try {
     const { sub, tenantId } = verify(
       token,
-      "SEGREDO_SUPER_SECRETO_DO_JWT",
+      process.env.JWT_SECRET as string,
     ) as IPayload;
 
     // Injeta os dados na requisição para os Controllers usarem

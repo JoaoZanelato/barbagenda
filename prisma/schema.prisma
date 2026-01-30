@@ -14,6 +14,9 @@ model app_clients {
   phone      String   @unique @db.VarChar(20)
   pin_hash   String   @db.VarChar(255)
   created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Token para notificações Push (Adicionado anteriormente)
+  push_token String?  @db.VarChar(255)
 }
 
 model appointments {
@@ -25,24 +28,30 @@ model appointments {
   start_time              DateTime  @db.Timestamptz(6)
   end_time                DateTime  @db.Timestamptz(6)
   status                  String?   @default("scheduled") @db.VarChar(20)
-  
-  // 👇 ADICIONADO: Preço total do agendamento
+
+  // Preço salvo (Adicionado anteriormente)
   total_price             Decimal?  @db.Decimal(10, 2)
+
+  // 👇 NOVOS CAMPOS: Controle de Lembretes
+  reminder_sent           Boolean?  @default(false)
+  feedback_sent           Boolean?  @default(false)
 
   original_appointment_id String?   @db.Uuid
   reschedule_count        Int?      @default(0)
   created_at              DateTime? @default(now()) @db.Timestamptz(6)
   updated_at              DateTime? @default(now()) @db.Timestamptz(6)
 
-  customers          customers?    @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  appointments       appointments? @relation("appointmentsToappointments", fields: [original_appointment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers          customers?     @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  appointments       appointments?  @relation("appointmentsToappointments", fields: [original_appointment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   other_appointments appointments[] @relation("appointmentsToappointments")
-  users              users?        @relation(fields: [professional_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  services           services?     @relation(fields: [service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  tenants            tenants?      @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users              users?         @relation(fields: [professional_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  services           services?      @relation(fields: [service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenants            tenants?       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  // Índices para deixar o Cron rápido
   @@index([tenant_id, start_time], map: "idx_appointments_date")
-  @@index([professional_id, start_time, end_time], map: "idx_appointments_range")
+  @@index([start_time], map: "idx_appointments_start_time") 
+  @@index([end_time], map: "idx_appointments_end_time")
 }
 
 model blocked_slots {
@@ -99,12 +108,12 @@ model services {
 }
 
 model tenants {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @db.VarChar(255)
-  slug        String    @unique @db.VarChar(50)
-  plan_status String?   @default("trial") @db.VarChar(20)
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  id              String            @id @default(uuid()) @db.Uuid
+  name            String            @db.VarChar(255)
+  slug            String            @unique @db.VarChar(50)
+  plan_status     String?           @default("trial") @db.VarChar(20)
+  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?         @default(now()) @db.Timestamptz(6)
 
   appointments    appointments[]
   blocked_slots   blocked_slots[]
@@ -124,6 +133,9 @@ model users {
   role          String?   @default("admin") @db.VarChar(20)
   active        Boolean?  @default(true)
   created_at    DateTime? @default(now()) @db.Timestamptz(6)
+
+  // Token para notificações Push (Adicionado anteriormente)
+  push_token    String?   @db.VarChar(255)
 
   appointments  appointments[]
   blocked_slots blocked_slots[]
