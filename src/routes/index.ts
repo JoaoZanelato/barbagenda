@@ -7,9 +7,11 @@ import { ProfessionalController } from "../controllers/ProfessionalController";
 import { AvailabilityController } from "../controllers/AvailabilityController";
 import { AppointmentController } from "../controllers/AppointmentController";
 import { TenantController } from "../controllers/TenantController";
-import { NotificationController } from "../controllers/NotificationController"; // 👈 NOVO
-import { ensureAuthenticated } from "../controllers/middlewares/ensureAuthenticated";
-import { ensureMobileAuth } from "../controllers/middlewares/ensureMobileAuth";
+import { NotificationController } from "../controllers/NotificationController";
+
+// 👇 CORREÇÃO AQUI: O caminho correto é ../middlewares/...
+import { ensureAuthenticated } from "../middlewares/ensureAuthenticated";
+import { ensureMobileAuth } from "../middlewares/ensureMobileAuth";
 import { prisma } from "../prisma/client";
 
 const router = Router();
@@ -23,7 +25,7 @@ const availabilityController = new AvailabilityController();
 const appointmentController = new AppointmentController();
 const tenantController = new TenantController();
 const mobileAuthController = new MobileAuthController();
-const notificationController = new NotificationController(); // 👈 NOVO
+const notificationController = new NotificationController();
 
 // ==========================================================
 // 🔓 ROTAS PÚBLICAS
@@ -73,7 +75,7 @@ router.post("/mobile/appointments", ensureMobileAuth, async (req, res) => {
   return appointmentController.store(req, res);
 });
 
-// 👇 ROTA NOVA: Salvar token do cliente
+// Salvar token do cliente
 router.post(
   "/mobile/notifications/token",
   ensureMobileAuth,
@@ -85,7 +87,7 @@ router.post(
 // ==========================================================
 router.use(ensureAuthenticated);
 
-// 👇 ROTA NOVA: Salvar token do barbeiro
+// Salvar token do barbeiro
 router.post("/notifications/token", notificationController.saveBarberToken);
 
 // Dashboard

@@ -1,14 +1,12 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
-import { parseISO, isValid, addMinutes, format } from "date-fns"; // 👈 Importe 'format'
-import { NotificationService } from "../services/NotificationService"; // 👈 Importe o Service
-
-const notificationService = new NotificationService(); // 👈 Instancie
+import { CreateAppointmentService } from "../services/CreateAppointmentService";
 
 export class AppointmentController {
   // 1. LISTAR
   async index(req: Request, res: Response) {
-    const tenant_id = (req as any).tenant_id;
+    // Usa a tipagem correta que criamos
+    const tenant_id = req.tenant_id;
 
     try {
       const appointments = await prisma.appointments.findMany({
@@ -27,18 +25,16 @@ export class AppointmentController {
     }
   }
 
-  // 2. CRIAR
+  // 2. CRIAR (Limpo e Refatorado)
   async store(req: Request, res: Response) {
     try {
-      let { professionalId, startTime, services, customerId, tenantId } =
-        req.body;
+      const { professionalId, startTime, services, customerId } = req.body;
+      const { authenticatedPhone, authenticatedName } = req.body; // Injetados pelo Middleware Mobile
 
-      if ((req as any).tenant_id) {
-        tenantId = (req as any).tenant_id;
-      }
+      // Tenta pegar o tenantId do token (Admin) ou do body (Mobile)
+      let tenantId = req.tenant_id || req.body.tenantId;
 
-      console.log("--- TENTATIVA DE AGENDAMENTO ---");
-
+      // Se ainda não tiver tenantId, tenta descobrir pelo profissional (Fallback)
       if (!tenantId && professionalId) {
         const professional = await prisma.users.findUnique({
           where: { id: professionalId },
@@ -47,107 +43,25 @@ export class AppointmentController {
         if (professional) tenantId = professional.tenant_id;
       }
 
-      if (!tenantId) {
-        return res
-          .status(400)
-          .json({ error: "Barbearia (Tenant) não identificada." });
-      }
+      const createAppointment = new CreateAppointmentService();
 
-      // Identificação Cliente Mobile
-      if (!customerId && req.body.authenticatedPhone) {
-        const phone = req.body.authenticatedPhone;
-        const name = req.body.authenticatedName || "Cliente App";
-
-        let customer = await prisma.customers.findFirst({
-          where: { phone, tenant_id: tenantId },
-        });
-
-        if (!customer) {
-          customer = await prisma.customers.create({
-            data: { name, phone, tenant_id: tenantId },
-          });
-        }
-        customerId = customer.id;
-      }
-
-      if (
-        !professionalId ||
-        !startTime ||
-        !services ||
-        services.length === 0 ||
-        !customerId
-      ) {
-        return res.status(400).json({ error: "Dados incompletos." });
-      }
-
-      const startDate = parseISO(startTime);
-      if (!isValid(startDate)) {
-        return res.status(400).json({ error: "Data inválida." });
-      }
-
-      // TRANSAÇÃO
-      const appointment = await prisma.$transaction(async (tx) => {
-        let totalDuration = 0;
-        let totalPrice = 0;
-
-        for (const s of services) {
-          const serviceData = await tx.services.findUnique({
-            where: { id: s.id },
-          });
-          if (serviceData) {
-            totalDuration += serviceData.duration_minutes;
-            totalPrice += Number(serviceData.price);
-          }
-        }
-
-        const endDate = addMinutes(startDate, totalDuration);
-        const mainServiceId = services[0].id;
-
-        const newAppt = await tx.appointments.create({
-          data: {
-            start_time: startDate,
-            end_time: endDate,
-            status: "SCHEDULED",
-            total_price: totalPrice,
-            customers: { connect: { id: customerId } },
-            users: { connect: { id: professionalId } },
-            tenants: { connect: { id: tenantId } },
-            services: { connect: { id: mainServiceId } },
-          },
-        });
-
-        return newAppt;
+      const appointment = await createAppointment.execute({
+        tenantId,
+        professionalId,
+        services,
+        startTime,
+        customerId,
+        authenticatedPhone,
+        authenticatedName,
       });
 
-      // 👇 ENVIO DE NOTIFICAÇÃO
-      try {
-        const professional = await prisma.users.findUnique({
-          where: { id: professionalId },
-          select: { push_token: true },
-        });
-
-        if (professional?.push_token) {
-          const dateFormatted = format(startDate, "dd/MM 'às' HH:mm");
-          await notificationService.send(
-            professional.push_token,
-            "Novo Agendamento! ✂️",
-            `Novo corte agendado para ${dateFormatted}.`,
-          );
-        }
-      } catch (notifError) {
-        console.error(
-          "Erro ao enviar notificação (não bloqueante):",
-          notifError,
-        );
-      }
-
-      console.log("Agendamento Criado:", appointment.id);
+      console.log("Agendamento Criado ID:", appointment.id);
       return res.status(201).json(appointment);
-    } catch (error) {
-      console.error("ERRO CRÍTICO NO BACKEND:", error);
+    } catch (error: any) {
+      console.error("ERRO AGENDAMENTO:", error.message);
       return res
-        .status(500)
-        .json({ error: "Erro interno ao processar agendamento." });
+        .status(400)
+        .json({ error: error.message || "Erro ao processar agendamento." });
     }
   }
 

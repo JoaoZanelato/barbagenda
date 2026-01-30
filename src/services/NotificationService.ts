@@ -4,7 +4,6 @@ export class NotificationService {
   async send(token: string | null, title: string, body: string, data?: any) {
     if (!token) return;
 
-    // Validação básica do token Expo
     if (
       !token.startsWith("ExponentPushToken[") &&
       !token.startsWith("ExpoPushToken[")
@@ -15,10 +14,13 @@ export class NotificationService {
 
     const message = {
       to: token,
-      sound: "default",
+      sound: "default", // iOS usa o default ou configuração especial de build
       title: title,
       body: body,
       data: data || {},
+      android: {
+        channelId: "barber-sound", // 👇 AQUI: Manda o Android usar o som da tesoura
+      },
     };
 
     try {

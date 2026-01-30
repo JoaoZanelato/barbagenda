@@ -17,15 +17,29 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#00000000"
+      },
+      "package": "com.seu.barbagenda"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
+    "notification": {
+      "icon": "./assets/images/notification_icon.png",
+      "color": "#FF231F7C",
+      "iosDisplayInForeground": true
+    },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification_icon.png",
+          "color": "#FF231F7C",
+          "sounds": ["./assets/sounds/scissor.wav"]
+        }
+      ]
     ]
   }
 }

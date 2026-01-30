@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import api from "../services/API";
 
+// Configuração de comportamento quando a notificação chega (App Aberto)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -33,7 +34,6 @@ export function useNotifications(isBarber: boolean = false) {
       await api.post(url, { pushToken: token });
       console.log("Token Push enviado com sucesso:", token);
     } catch (error) {
-      // Ignora erro silenciosamente se usuário não estiver logado ainda
       console.log("Token não enviado (provavelmente não logado).");
     }
   }
@@ -45,11 +45,13 @@ async function registerForPushNotificationsAsync() {
   let token;
 
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
+    // 👇 CRIAÇÃO DO CANAL COM SOM DE TESOURA
+    await Notifications.setNotificationChannelAsync("barber-sound", {
+      name: "Notificações de Corte",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#FF231F7C",
+      sound: "scissor.wav", // Certifique-se que o arquivo existe em assets/sounds/
     });
   }
 
