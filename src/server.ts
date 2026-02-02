@@ -1,24 +1,30 @@
 import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser"; // 👈 IMPORTANTE
 import { router } from "./routes";
 import { CronService } from "./services/CronService";
 
 const app = express();
 
 app.use(express.json());
+app.use(cookieParser()); // 👈 ATIVA A LEITURA DE COOKIES
+
 app.use(
   cors({
     origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
-    credentials: true, // Isso permite o envio de Cookies e Headers de Auth
+    credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
 app.use(router);
 
-// Middleware de Erro Global (Nativo do Express 5)
+// Middleware de Erro Global (Melhorado com Log)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error("❌ ERRO NO SERVIDOR:", err); // Log para debug
+
   if (err instanceof Error) {
     return res.status(400).json({ error: err.message });
   }

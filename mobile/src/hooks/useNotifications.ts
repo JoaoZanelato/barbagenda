@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
 import { Platform } from "react-native";
 import api from "../services/API";
 
-// Configuração de comportamento quando a notificação chega (App Aberto)
+// Configuração para a notificação aparecer mesmo com o App aberto
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -15,43 +14,47 @@ Notifications.setNotificationHandler({
 });
 
 export function useNotifications(isBarber: boolean = false) {
-  const [expoPushToken, setExpoPushToken] = useState<string>("");
-
   useEffect(() => {
+    let isMounted = true;
+
     registerForPushNotificationsAsync().then((token) => {
-      if (token) {
-        setExpoPushToken(token);
-        sendTokenToBackend(token, isBarber);
+      if (token && isMounted) {
+        console.log("🔔 Token Gerado no Mobile:", token);
+
+        // Define a URL correta baseado no tipo de usuário
+        const url = isBarber
+          ? "/notifications/token"
+          : "/mobile/notifications/token";
+
+        // Envia para o backend (Corrigido para enviar { token })
+        api
+          .post(url, { token: token })
+          .then(() =>
+            console.log("✅ Token enviado com sucesso para o Backend!"),
+          )
+          .catch((err) =>
+            console.log("❌ Falha ao enviar token para o backend:", err),
+          );
       }
     });
-  }, []);
 
-  async function sendTokenToBackend(token: string, isBarber: boolean) {
-    try {
-      const url = isBarber
-        ? "/notifications/token"
-        : "/mobile/notifications/token";
-      await api.post(url, { pushToken: token });
-      console.log("Token Push enviado com sucesso:", token);
-    } catch (error) {
-      console.log("Token não enviado (provavelmente não logado).");
-    }
-  }
-
-  return { expoPushToken };
+    return () => {
+      isMounted = false;
+    };
+  }, [isBarber]);
 }
 
 async function registerForPushNotificationsAsync() {
   let token;
 
   if (Platform.OS === "android") {
-    // 👇 CRIAÇÃO DO CANAL COM SOM DE TESOURA
-    await Notifications.setNotificationChannelAsync("barber-sound", {
+    // 👇 CRUCIAL: Criamos a versão V2 do canal para limpar configurações antigas
+    await Notifications.setNotificationChannelAsync("barber-sound-v2", {
       name: "Notificações de Corte",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#FF231F7C",
-      sound: "scissor.wav", // Certifique-se que o arquivo existe em assets/sounds/
+      sound: "scissor.wav", // O arquivo deve estar configurado no app.json e na pasta assets
     });
   }
 
@@ -66,21 +69,23 @@ async function registerForPushNotificationsAsync() {
     }
 
     if (finalStatus !== "granted") {
-      console.log("Falha ao obter permissão para notificação!");
+      console.log("Sem permissão para notificações!");
       return;
     }
 
-    const projectId =
-      Constants?.expoConfig?.extra?.eas?.projectId ??
-      Constants?.easConfig?.projectId;
+    // ID do Projeto (Hardcoded para garantir que funcione, já que o automático falhou)
+    const projectId = "ee0e849b-1ead-49b6-b472-f530a39097d6";
 
-    token = (
-      await Notifications.getExpoPushTokenAsync({
-        projectId,
-      })
-    ).data;
+    try {
+      // Pega o token usando o ID do projeto explícito
+      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    } catch (error) {
+      console.log("ERRO AO PEGAR TOKEN:", error);
+    }
   } else {
-    console.log("Precisa de um dispositivo físico para Push Notifications");
+    console.log(
+      "Emulador não suporta Push Notifications. Use um celular real.",
+    );
   }
 
   return token;

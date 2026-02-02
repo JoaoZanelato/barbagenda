@@ -149,6 +149,44 @@ export function Dashboard() {
   async function handleCreateProfessional(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
+    async function handleManualScheduleSubmit(e: React.FormEvent) {
+      e.preventDefault();
+      setIsLoading(true);
+
+      try {
+        // Formata a data para ISO string, que é o que o backend espera
+        const startDateTime = new Date(
+          `${manualSchedule.date}T${manualSchedule.time}:00`,
+        ).toISOString();
+
+        // 👇 AQUI ESTAVA O ERRO: Os nomes dos campos devem bater com o Controller
+        await api.post("/appointments", {
+          professionalId: manualSchedule.professionalId, // Antes: user_id
+          startTime: startDateTime, // Antes: start_time
+          services: [{ id: manualSchedule.serviceId }], // Antes: service_id (agora é array)
+
+          // Enviamos o telefone como 'authenticatedPhone' para o Service criar/achar o cliente
+          authenticatedPhone: manualSchedule.customerPhone,
+          authenticatedName: manualSchedule.customerPhone, // Usa o telefone como nome provisório se for novo
+        });
+
+        setIsManualScheduleModalOpen(false);
+        setManualSchedule({
+          customerPhone: "",
+          serviceId: "",
+          professionalId: "",
+          date: "",
+          time: "",
+        });
+        loadData();
+        alert("Agendamento criado com sucesso!");
+      } catch (error) {
+        console.error(error); // Log para ajudar no debug
+        alert("Erro ao criar agendamento manual.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
     try {
       await api.post("/professionals", { ...newProfessional });
       setIsProfessionalModalOpen(false);
@@ -164,17 +202,22 @@ export function Dashboard() {
   async function handleManualScheduleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
+
     try {
+      // Formata a data para ISO string, que é o que o backend espera
       const startDateTime = new Date(
         `${manualSchedule.date}T${manualSchedule.time}:00`,
-      );
+      ).toISOString();
 
+      // 👇 AQUI ESTAVA O ERRO: Os nomes dos campos devem bater com o Controller
       await api.post("/appointments", {
-        customer_phone: manualSchedule.customerPhone,
-        service_id: manualSchedule.serviceId,
-        user_id: manualSchedule.professionalId,
-        start_time: startDateTime,
-        status: "confirmed",
+        professionalId: manualSchedule.professionalId, // Antes: user_id
+        startTime: startDateTime, // Antes: start_time
+        services: [{ id: manualSchedule.serviceId }], // Antes: service_id (agora é array)
+
+        // Enviamos o telefone como 'authenticatedPhone' para o Service criar/achar o cliente
+        authenticatedPhone: manualSchedule.customerPhone,
+        authenticatedName: manualSchedule.customerPhone, // Usa o telefone como nome provisório se for novo
       });
 
       setIsManualScheduleModalOpen(false);
@@ -188,6 +231,7 @@ export function Dashboard() {
       loadData();
       alert("Agendamento criado com sucesso!");
     } catch (error) {
+      console.error(error); // Log para ajudar no debug
       alert("Erro ao criar agendamento manual.");
     } finally {
       setIsLoading(false);

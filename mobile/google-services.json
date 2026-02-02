@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "102559551293",
+    "project_id": "barbagenda-cf284",
+    "storage_bucket": "barbagenda-cf284.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:102559551293:android:3738895b7a328e9db13f54",
+        "android_client_info": {
+          "package_name": "com.barbagenda.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrvm2E8-I1RXw9AwRb52dGNsAfz5zHVjE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

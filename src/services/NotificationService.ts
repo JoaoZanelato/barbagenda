@@ -1,39 +1,48 @@
-import axios from "axios";
+import { Expo } from "expo-server-sdk";
 
 export class NotificationService {
-  async send(token: string | null, title: string, body: string, data?: any) {
-    if (!token) return;
+  private expo: Expo;
 
-    if (
-      !token.startsWith("ExponentPushToken[") &&
-      !token.startsWith("ExpoPushToken[")
-    ) {
-      console.log("Token de notificação inválido ignorado:", token);
+  constructor() {
+    this.expo = new Expo();
+  }
+
+  async send(pushToken: string, title: string, body: string) {
+    // Verifica se é um token válido da Expo
+    if (!Expo.isExpoPushToken(pushToken)) {
+      console.error(`Push token inválido: ${pushToken}`);
       return;
     }
 
-    const message = {
-      to: token,
-      sound: "default", // iOS usa o default ou configuração especial de build
+    const messages = [];
+
+    messages.push({
+      to: pushToken,
+      sound: "default", // Fallback para iOS (o iOS usa 'default' ou nome do arquivo se estiver no bundle)
       title: title,
       body: body,
-      data: data || {},
-      android: {
-        channelId: "barber-sound", // 👇 AQUI: Manda o Android usar o som da tesoura
-      },
-    };
+      data: { url: "/agendamentos" }, // Dados extras opcionais
+
+      // 👇 O SEGREDO: Força o Android a usar o canal que configuramos com o som personalizado
+      channelId: "barber-sound-v2",
+
+      priority: "high",
+    });
 
     try {
-      await axios.post("https://exp.host/--/api/v2/push/send", message, {
-        headers: {
-          Accept: "application/json",
-          "Accept-encoding": "gzip, deflate",
-          "Content-Type": "application/json",
-        },
-      });
-      console.log(`[NOTIFICAÇÃO] Enviada para ${token}: ${title}`);
+      // Envia a notificação
+      const chunks = this.expo.chunkPushNotifications(messages);
+
+      for (const chunk of chunks) {
+        try {
+          await this.expo.sendPushNotificationsAsync(chunk);
+          console.log("🔔 Notificação enviada para a Expo (Canal V2)!");
+        } catch (error) {
+          console.error("Erro ao enviar chunk de notificação:", error);
+        }
+      }
     } catch (error) {
-      console.error("[NOTIFICAÇÃO ERRO]", error);
+      console.error("Erro geral no serviço de notificação:", error);
     }
   }
 }

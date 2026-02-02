@@ -20,7 +20,8 @@
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#00000000"
       },
-      "package": "com.seu.barbagenda"
+      "package": "com.barbagenda.app",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -37,9 +38,17 @@
         {
           "icon": "./assets/images/notification_icon.png",
           "color": "#FF231F7C",
-          "sounds": ["./assets/sounds/scissor.wav"]
+          "sounds": [
+            "./assets/sounds/scissor.wav"
+          ]
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ee0e849b-1ead-49b6-b472-f530a39097d6"
+      }
+    },
+    "owner": "zanelatozz"
   }
 }

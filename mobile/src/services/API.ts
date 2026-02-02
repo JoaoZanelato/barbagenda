@@ -1,9 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  // 👇 ATENÇÃO: Confirme se o IP é esse mesmo no 'ipconfig'
-  // 👇 Mude a porta de 3000 para 3333
-  baseURL: "http://192.168.0.105:3333",
+  baseURL: "http:/172.16.209.8:3333",
   timeout: 10000,
 });
 

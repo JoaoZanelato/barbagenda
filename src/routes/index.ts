@@ -8,8 +8,6 @@ import { AvailabilityController } from "../controllers/AvailabilityController";
 import { AppointmentController } from "../controllers/AppointmentController";
 import { TenantController } from "../controllers/TenantController";
 import { NotificationController } from "../controllers/NotificationController";
-
-// 👇 CORREÇÃO AQUI: O caminho correto é ../middlewares/...
 import { ensureAuthenticated } from "../middlewares/ensureAuthenticated";
 import { ensureMobileAuth } from "../middlewares/ensureMobileAuth";
 import { prisma } from "../prisma/client";
@@ -73,6 +71,21 @@ router.get("/disponibilidade", availabilityController.handle);
 // ==========================================================
 router.post("/mobile/appointments", ensureMobileAuth, async (req, res) => {
   return appointmentController.store(req, res);
+});
+
+// Rota para o App Mobile atualizar o token de notificação
+router.patch("/users/push-token", ensureAuthenticated, async (req, res) => {
+  const { token } = req.body;
+  const user_id = req.user_id;
+
+  if (!token) return res.status(400).json({ error: "Token não enviado" });
+
+  await prisma.users.update({
+    where: { id: user_id },
+    data: { push_token: token },
+  });
+
+  return res.status(200).send();
 });
 
 // Salvar token do cliente

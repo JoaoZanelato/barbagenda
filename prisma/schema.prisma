@@ -32,7 +32,7 @@ model appointments {
   // Preço salvo (Adicionado anteriormente)
   total_price             Decimal?  @db.Decimal(10, 2)
 
-  // 👇 NOVOS CAMPOS: Controle de Lembretes
+  // Controle de Lembretes
   reminder_sent           Boolean?  @default(false)
   feedback_sent           Boolean?  @default(false)
 

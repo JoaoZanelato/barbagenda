@@ -4,31 +4,54 @@ import { prisma } from "../prisma/client";
 export class ServiceController {
   // CRIAR SERVIÇO
   async create(req: Request, res: Response) {
-    const { name, price, duration, description } = req.body;
-    const tenant_id = req.tenant_id;
+    // 1. Recebe os dados (Tenta ler 'duration' OU 'duration_minutes')
+    const { name, price, duration, duration_minutes, description } = req.body;
 
-    const service = await prisma.services.create({
-      data: {
-        name,
-        price: Number(price),
-        duration_minutes: Number(duration),
-        description,
-        tenant_id,
-        active: true, // Garante que nasce ativo
-      },
-    });
+    // Define qual usar (se vier do Front Web é 'duration', se vier do App é 'duration_minutes')
+    const finalDuration = duration || duration_minutes;
 
-    return res.json(service);
+    const tenant_id = (req as any).tenant_id;
+
+    // 2. VALIDAÇÃO COM LOG (Para você ver no terminal se falhar)
+    if (!name || !price || !finalDuration) {
+      console.log(
+        "❌ Tentativa de criar serviço falhou. Dados recebidos:",
+        req.body,
+      );
+
+      return res.status(400).json({
+        error: "Preencha todos os campos obrigatórios (Nome, Preço e Duração).",
+      });
+    }
+
+    try {
+      // 3. Cria no Banco
+      const service = await prisma.services.create({
+        data: {
+          name,
+          price: Number(price),
+          duration_minutes: Number(finalDuration), // Usa o valor que encontramos
+          description: description || "",
+          tenant_id,
+          active: true,
+        },
+      });
+
+      return res.json(service);
+    } catch (error) {
+      console.error("❌ Erro CRÍTICO ao criar serviço:", error);
+      return res.status(400).json({ error: "Erro ao cadastrar serviço." });
+    }
   }
 
-  // LISTAR SERVIÇOS (Apenas Ativos)
+  // LISTAR SERVIÇOS
   async list(req: Request, res: Response) {
     const tenant_id = (req as any).tenant_id;
 
     const services = await prisma.services.findMany({
       where: {
         tenant_id,
-        active: true, // 👇 MUDANÇA: Só traz os que não foram "deletados"
+        active: true,
       },
       orderBy: { name: "asc" },
     });
@@ -36,12 +59,11 @@ export class ServiceController {
     return res.json(services);
   }
 
-  // DELETAR SERVIÇO (Soft Delete - Exclusão Lógica)
+  // DELETAR SERVIÇO
   async delete(req: Request, res: Response) {
     const { id } = req.params;
     const tenant_id = (req as any).tenant_id;
 
-    // 1. Verifica se existe
     const service = await prisma.services.findFirst({
       where: { id, tenant_id },
     });
@@ -50,11 +72,9 @@ export class ServiceController {
       return res.status(404).json({ error: "Serviço não encontrado" });
     }
 
-    // 2. MUDANÇA CRUCIAL: Atualiza para inativo em vez de deletar
-    // Isso evita o erro de "Foreign Key Constraint" e mantém o histórico.
     await prisma.services.update({
       where: { id },
-      data: { active: false }, // <--- O segredo está aqui
+      data: { active: false },
     });
 
     return res.status(204).send();

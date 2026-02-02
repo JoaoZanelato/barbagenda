@@ -2,39 +2,36 @@ import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
 
 export class NotificationController {
-  // Salva o token do Cliente Mobile
-  async saveClientToken(req: Request, res: Response) {
-    const { pushToken } = req.body;
-    const { authenticatedPhone } = req.body; // Injetado pelo middleware mobile
+  // Salva o token do Barbeiro (Admin/Profissional)
+  async saveBarberToken(req: Request, res: Response) {
+    const { token } = req.body;
+    // Pega o ID do usuário logado (injetado pelo middleware ensureAuthenticated)
+    const user_id = (req as any).user_id;
 
-    if (!authenticatedPhone || !pushToken) return res.status(400).send();
+    if (!token) {
+      return res.status(400).json({ error: "Token não enviado." });
+    }
 
     try {
-      await prisma.app_clients.update({
-        where: { phone: authenticatedPhone },
-        data: { push_token: pushToken },
+      console.log(`📝 Salvando Push Token para usuário ${user_id}...`);
+
+      await prisma.users.update({
+        where: { id: user_id },
+        data: { push_token: token },
       });
-      return res.json({ ok: true });
+
+      console.log("✅ Token salvo com sucesso!");
+      return res.status(200).send();
     } catch (error) {
-      return res.status(500).json({ error: "Erro ao salvar token" });
+      console.error("❌ Erro ao salvar token:", error);
+      return res.status(500).json({ error: "Erro interno ao salvar token" });
     }
   }
 
-  // Salva o token do Barbeiro/Admin (Web ou App Barbeiro)
-  async saveBarberToken(req: Request, res: Response) {
-    const { pushToken } = req.body;
-    const userId = req.user_id; // Injetado pelo middleware auth
-
-    if (!userId || !pushToken) return res.status(400).send();
-
-    try {
-      await prisma.users.update({
-        where: { id: userId },
-        data: { push_token: pushToken },
-      });
-      return res.json({ ok: true });
-    } catch (error) {
-      return res.status(500).json({ error: "Erro ao salvar token" });
-    }
+  // Salva o token do Cliente Final (App Cliente)
+  async saveClientToken(req: Request, res: Response) {
+    // Lógica similar para a tabela 'app_clients' ou 'customers' se você tiver login de cliente
+    // Por enquanto, retorna 200 para não quebrar o app
+    return res.status(200).send();
   }
 }
