@@ -4,8 +4,6 @@ import { hash, compare } from "bcryptjs";
 import { sign } from "jsonwebtoken";
 
 export class MobileAuthController {
-  // ... (Mantenha os métodos register e login como estavam) ...
-
   async register(req: Request, res: Response) {
     const { name, phone, pin } = req.body;
 
@@ -28,11 +26,7 @@ export class MobileAuthController {
       const pinHash = await hash(String(pin), 8);
 
       const user = await prisma.app_clients.create({
-        data: {
-          name,
-          phone,
-          pin_hash: pinHash,
-        },
+        data: { name, phone, pin_hash: pinHash },
       });
 
       const token = sign(
@@ -82,9 +76,7 @@ export class MobileAuthController {
     }
   }
 
-  // 👇 NOVOS MÉTODOS ADICIONADOS 👇
-
-  // 3. OBTER PERFIL (ME)
+  // 3. OBTER PERFIL (ME) - COM AVATAR
   async me(req: Request, res: Response) {
     const { authenticatedPhone } = req.body;
 
@@ -95,7 +87,8 @@ export class MobileAuthController {
           id: true,
           name: true,
           phone: true,
-          created_at: true, // Data de cadastro
+          created_at: true,
+          avatar_url: true, // 👈 Importante
         },
       });
 
@@ -108,27 +101,35 @@ export class MobileAuthController {
     }
   }
 
-  // 4. EXCLUIR CONTA
+  // 4. ATUALIZAR PERFIL (Novo)
+  async update(req: Request, res: Response) {
+    const { authenticatedPhone } = req.body;
+    const { name, avatar_url } = req.body;
+
+    try {
+      const user = await prisma.app_clients.update({
+        where: { phone: authenticatedPhone },
+        data: { name, avatar_url },
+      });
+
+      return res.json(user);
+    } catch (error) {
+      return res.status(400).json({ error: "Erro ao atualizar perfil." });
+    }
+  }
+
+  // 5. EXCLUIR
   async delete(req: Request, res: Response) {
     const { authenticatedPhone } = req.body;
-
     try {
       const user = await prisma.app_clients.findUnique({
         where: { phone: authenticatedPhone },
       });
-
-      if (!user)
-        return res.status(404).json({ error: "Usuário não encontrado." });
-
-      // Exclui o usuário (O Cascade do banco deve limpar favoritos, mas agendamentos podem precisar de tratamento especial dependendo da regra de negócio)
-      await prisma.app_clients.delete({
-        where: { id: user.id },
-      });
-
-      return res.json({ message: "Conta excluída com sucesso." });
+      if (!user) return res.status(404).json({ error: "User not found" });
+      await prisma.app_clients.delete({ where: { id: user.id } });
+      return res.json({ message: "Conta excluída." });
     } catch (error) {
-      console.log(error);
-      return res.status(500).json({ error: "Erro ao excluir conta." });
+      return res.status(500).json({ error: "Erro ao excluir." });
     }
   }
 }

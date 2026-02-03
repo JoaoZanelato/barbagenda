@@ -1,4 +1,22 @@
 import { Router } from "express";
+import multer from "multer";
+import path from "path";
+import crypto from "crypto";
+
+// --- Configuração do Upload ---
+const uploadFolder = path.resolve(__dirname, "..", "..", "uploads");
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: uploadFolder,
+    filename(request, file, callback) {
+      const fileHash = crypto.randomBytes(10).toString("hex");
+      const fileName = `${fileHash}-${file.originalname}`;
+      return callback(null, fileName);
+    },
+  }),
+});
+
+// Import Controllers
 import { DashboardController } from "../controllers/DashboardController";
 import { AuthController } from "../controllers/AuthController";
 import { MobileAuthController } from "../controllers/MobileAuthController";
@@ -16,7 +34,7 @@ import { prisma } from "../prisma/client";
 
 const router = Router();
 
-// --- Instanciar Controllers ---
+// Controllers Instanciados
 const dashboardController = new DashboardController();
 const authController = new AuthController();
 const serviceController = new ServiceController();
@@ -31,19 +49,23 @@ const mobileFavoriteController = new MobileFavoriteController();
 // ==========================================================
 // 🔓 ROTAS PÚBLICAS
 // ==========================================================
-
-// Web Admin Login
 router.post("/login", authController.handle);
 router.post("/tenants", tenantController.store);
-
-// App Mobile Auth
 router.post("/mobile/register", mobileAuthController.register);
 router.post("/mobile/login", mobileAuthController.login);
 
-// App Mobile - Listagem de Barbearias (Pública)
-router.get("/mobile/tenants", tenantController.index); // Agora usa o Controller atualizado
+// 👇 ROTA DE UPLOAD DE FOTOS (Funda para o Perfil)
+router.post("/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Nenhum arquivo enviado" });
+  }
+  // Retorna a URL completa para o App salvar no banco
+  // O App vai receber: http://192.168.x.x:3333/files/nome-da-foto.jpg
+  const fullUrl = `${req.protocol}://${req.get("host")}/files/${req.file.filename}`;
+  return res.json({ url: fullUrl });
+});
 
-// App Mobile - Dados da Barbearia Selecionada (Serviços e Profissionais)
+router.get("/mobile/tenants", tenantController.index);
 router.get("/mobile/tenants/:id/details", async (req, res) => {
   const { id } = req.params;
   try {
@@ -57,42 +79,33 @@ router.get("/mobile/tenants/:id/details", async (req, res) => {
     });
     return res.json({ professionals: pros, services });
   } catch (error) {
-    return res.status(500).json({ error: "Erro ao buscar detalhes" });
+    return res.status(500).json({ error: "Erro" });
   }
 });
 
-// Disponibilidade (Usada tanto no Web quanto no Mobile)
 router.get("/disponibilidade", availabilityController.handle);
 
 // ==========================================================
-// 📱 ROTAS PRIVADAS DO APP (Mobile - Cliente)
+// 📱 ROTAS PRIVADAS (Mobile)
 // ==========================================================
-// Todas estas rotas exigem o token do Cliente (ensureMobileAuth)
-
-// Perfil do Usuário
 router.get("/mobile/profile", ensureMobileAuth, mobileAuthController.me);
+router.put("/mobile/profile", ensureMobileAuth, mobileAuthController.update); // Salvar a URL da foto
 router.delete("/mobile/profile", ensureMobileAuth, mobileAuthController.delete);
 
-// Criar Agendamento
-router.post("/mobile/appointments", ensureMobileAuth, async (req, res) => {
-  return appointmentController.store(req, res);
-});
-
-// Meus Agendamentos (Histórico)
+router.post("/mobile/appointments", ensureMobileAuth, (req, res) =>
+  appointmentController.store(req, res),
+);
 router.get(
   "/mobile/my-appointments",
   ensureMobileAuth,
   appointmentController.listMobile,
 );
-
-// Cancelar Agendamento
 router.patch(
   "/mobile/appointments/:id/cancel",
   ensureMobileAuth,
   appointmentController.cancelMobile,
 );
 
-// Favoritos (Listar e Toggle)
 router.get(
   "/mobile/favorites",
   ensureMobileAuth,
@@ -103,8 +116,6 @@ router.post(
   ensureMobileAuth,
   mobileFavoriteController.toggle,
 );
-
-// Salvar Token de Notificação (Push)
 router.post(
   "/mobile/notifications/token",
   ensureMobileAuth,
@@ -112,47 +123,31 @@ router.post(
 );
 
 // ==========================================================
-// 🔒 ROTAS PRIVADAS WEB (Painel do Barbeiro/Admin)
+// 🔒 ROTAS PRIVADAS (Web Admin)
 // ==========================================================
-// Todas estas rotas exigem o token do Barbeiro (ensureAuthenticated)
 router.use(ensureAuthenticated);
-
-// Salvar token de notificação do barbeiro
 router.post("/notifications/token", notificationController.saveBarberToken);
-
-// Dashboard (Métricas)
 router.get("/dashboard/metrics", dashboardController.index);
+router.get("/tenants", tenantController.index);
+router.put("/tenants/profile", tenantController.update);
 
-// Tenants (Dados da Barbearia)
-router.get("/tenants", tenantController.index); // Listagem genérica
-router.put("/tenants/profile", tenantController.update); // 👈 ATUALIZAR PERFIL DA BARBEARIA
-
-// Atualizar Token Push (Genérico)
 router.patch("/users/push-token", async (req, res) => {
   const { token } = req.body;
   const user_id = req.user_id;
-
   if (!token) return res.status(400).json({ error: "Token não enviado" });
-
   await prisma.users.update({
     where: { id: user_id },
     data: { push_token: token },
   });
-
   return res.status(200).send();
 });
 
-// Serviços (CRUD)
 router.post("/services", serviceController.create);
 router.get("/services", serviceController.list);
 router.delete("/services/:id", serviceController.delete);
-
-// Profissionais (CRUD)
 router.post("/professionals", professionalController.create);
 router.get("/professionals", professionalController.list);
 router.delete("/professionals/:id", professionalController.delete);
-
-// Agendamentos (Gestão pelo Barbeiro)
 router.get("/appointments", appointmentController.index);
 router.post("/appointments", appointmentController.store);
 router.patch("/appointments/:id", appointmentController.update);

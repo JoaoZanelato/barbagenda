@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Modal,
+  Image,
 } from "react-native";
 import {
   LogOut,
@@ -30,13 +31,11 @@ import { useBarberDashboard } from "./useBarberDashboard";
 import { colors } from "../../../theme/colors";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
-import { useNotifications } from "../../../hooks/useNotifications"; // 👈 Importe
+import { useNotifications } from "../../../hooks/useNotifications";
 
 export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
-  // 👇 Ativa Notificações (Barbeiro = true)
   useNotifications(true);
 
-  // Hook com toda a lógica de negócio
   const {
     activeTab,
     setActiveTab,
@@ -58,7 +57,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
     handleUpdateStatus,
   } = useBarberDashboard();
 
-  // Estados locais
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [newDuration, setNewDuration] = useState("");
@@ -94,6 +92,19 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
     </TouchableOpacity>
   );
 
+  // Função auxiliar para cor do status
+  const getStatusColor = (status: string) => {
+    if (status === "COMPLETED") return colors.success; // Verde
+    if (status === "CANCELLED") return colors.error; // Vermelho
+    return colors.primary; // Amarelo/Dourado (Agendado)
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === "COMPLETED") return "Concluído";
+    if (status === "CANCELLED") return "Cancelado";
+    return "Agendado";
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -104,7 +115,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </TouchableOpacity>
       </View>
 
-      {/* Navegação (Tabs) */}
+      {/* Tabs */}
       <View style={styles.tabs}>
         {renderTab("agenda", "Agenda", CalendarIcon)}
         {renderTab("services", "Serviços", Scissors)}
@@ -112,7 +123,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         {renderTab("metrics", "Métricas", TrendingUp)}
       </View>
 
-      {/* Conteúdo Principal */}
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -121,7 +131,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         />
       ) : (
         <View style={{ flex: 1 }}>
-          {/* ==================== ABA AGENDA ==================== */}
+          {/* ==================== AGENDA ==================== */}
           {activeTab === "agenda" && (
             <>
               {/* Filtro de Data */}
@@ -148,7 +158,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Lista de Agendamentos */}
+              {/* Lista */}
               <FlatList
                 data={appointments}
                 keyExtractor={(item) => item.id}
@@ -158,52 +168,87 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                   </Text>
                 }
                 contentContainerStyle={{ paddingBottom: 80 }}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.card,
-                      item.status === "CANCELLED" && {
-                        opacity: 0.6,
-                        borderColor: colors.error,
-                      },
-                    ]}
-                    onPress={() => openAppointmentDetails(item)}
-                  >
-                    <View style={styles.timeBox}>
-                      <Text style={styles.timeText}>
-                        {format(new Date(item.start_time), "HH:mm")}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>
-                        {item.customers?.name || "Cliente sem nome"}
-                      </Text>
-                      <Text style={styles.cardDesc}>{item.services?.name}</Text>
-                      <Text
-                        style={[
-                          styles.statusBadge,
-                          item.status === "COMPLETED"
-                            ? { color: colors.success }
-                            : item.status === "CANCELLED"
-                              ? { color: colors.error }
-                              : { color: colors.primary },
-                        ]}
-                      >
-                        {item.status === "SCHEDULED"
-                          ? "Agendado"
-                          : item.status === "COMPLETED"
-                            ? "Concluído"
-                            : "Cancelado"}
-                      </Text>
-                    </View>
-                    <ChevronRight size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                )}
+                renderItem={({ item }) => {
+                  const statusColor = getStatusColor(item.status);
+
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.card,
+                        // Borda colorida baseada no status
+                        { borderLeftWidth: 4, borderLeftColor: statusColor },
+                        item.status === "CANCELLED" && { opacity: 0.6 },
+                      ]}
+                      onPress={() => openAppointmentDetails(item)}
+                    >
+                      {/* 1. Foto do Cliente */}
+                      {item.client_avatar ? (
+                        <Image
+                          source={{ uri: item.client_avatar }}
+                          style={styles.avatar}
+                        />
+                      ) : (
+                        <View style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarLetter}>
+                            {item.client_name ? item.client_name[0] : "C"}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* 2. Informações */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>{item.client_name}</Text>
+                        <Text style={styles.cardDesc}>
+                          {item.services?.name}
+                        </Text>
+
+                        {/* Badge de Status com cor de fundo suave */}
+                        <View
+                          style={{
+                            marginTop: 4,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 4,
+                            alignSelf: "flex-start",
+                            backgroundColor:
+                              item.status === "COMPLETED"
+                                ? "rgba(16,185,129,0.1)"
+                                : item.status === "CANCELLED"
+                                  ? "rgba(239,68,68,0.1)"
+                                  : "rgba(212,175,55,0.1)",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: "bold",
+                              color: statusColor,
+                            }}
+                          >
+                            {getStatusLabel(item.status)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* 3. Horário */}
+                      <View style={{ alignItems: "flex-end" }}>
+                        <Clock
+                          size={14}
+                          color={colors.textSecondary}
+                          style={{ marginBottom: 4 }}
+                        />
+                        <Text style={styles.timeText}>
+                          {format(new Date(item.start_time), "HH:mm")}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
               />
             </>
           )}
 
-          {/* ==================== ABA SERVIÇOS ==================== */}
+          {/* ==================== SERVIÇOS ==================== */}
           {activeTab === "services" && (
             <>
               <FlatList
@@ -242,7 +287,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
             </>
           )}
 
-          {/* ==================== ABA EQUIPE ==================== */}
+          {/* ==================== EQUIPE ==================== */}
           {activeTab === "team" && (
             <>
               <FlatList
@@ -278,7 +323,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
             </>
           )}
 
-          {/* ==================== ABA MÉTRICAS ==================== */}
+          {/* ==================== MÉTRICAS ==================== */}
           {activeTab === "metrics" && metrics && (
             <ScrollView contentContainerStyle={styles.metricsContainer}>
               <View style={styles.metricCard}>
@@ -304,7 +349,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </View>
       )}
 
-      {/* Modais omitidos para brevidade (permanecem iguais) */}
+      {/* Modal de Detalhes (Agenda) */}
       <Modal
         visible={modalType === "appointment_details"}
         transparent
@@ -316,16 +361,28 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
               <>
                 <Text style={styles.modalTitle}>Detalhes do Agendamento</Text>
 
+                {/* Foto Grande no Modal */}
+                {selectedAppointment.client_avatar && (
+                  <View style={{ alignItems: "center", marginBottom: 20 }}>
+                    <Image
+                      source={{ uri: selectedAppointment.client_avatar }}
+                      style={{ width: 80, height: 80, borderRadius: 40 }}
+                    />
+                  </View>
+                )}
+
                 <View style={styles.detailRow}>
                   <User size={20} color={colors.primary} />
                   <Text style={styles.detailText}>
-                    {selectedAppointment.customers?.name || "Cliente"}
+                    {selectedAppointment.client_name}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Phone size={20} color={colors.primary} />
                   <Text style={styles.detailText}>
-                    {selectedAppointment.customers?.phone || "Sem telefone"}
+                    {selectedAppointment.client_phone ||
+                      selectedAppointment.customers?.phone ||
+                      "Sem telefone"}
                   </Text>
                 </View>
 
@@ -364,7 +421,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                         }}
                       />
                     )}
-
                   {selectedAppointment.status !== "CANCELLED" && (
                     <Button
                       title="Cancelar Agendamento"
@@ -375,7 +431,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                     />
                   )}
                 </View>
-
                 <TouchableOpacity
                   style={styles.closeBtn}
                   onPress={() => setModalType(null)}
@@ -388,6 +443,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </View>
       </Modal>
 
+      {/* Modal de Criação (Serviço/Profissional) - Mantido igual */}
       <Modal
         visible={modalType === "service" || modalType === "professional"}
         transparent
@@ -407,52 +463,53 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                   onChangeText={setNewName}
                 />
                 <Input
-                  placeholder="Preço (ex: 35.00)"
-                  keyboardType="numeric"
+                  placeholder="Preço (R$)"
                   value={newPrice}
                   onChangeText={setNewPrice}
+                  keyboardType="numeric"
                 />
                 <Input
                   placeholder="Duração (minutos)"
-                  keyboardType="numeric"
                   value={newDuration}
                   onChangeText={setNewDuration}
+                  keyboardType="numeric"
                 />
                 <Button
-                  title="Salvar Serviço"
+                  title="Criar Serviço"
                   onPress={() =>
                     handleCreateService(newName, newPrice, newDuration)
                   }
+                  style={{ marginTop: 10 }}
                 />
               </>
             ) : (
               <>
                 <Input
-                  placeholder="Nome Completo"
+                  placeholder="Nome"
                   value={newName}
                   onChangeText={setNewName}
                 />
                 <Input
-                  placeholder="E-mail de Acesso"
-                  keyboardType="email-address"
+                  placeholder="E-mail"
                   value={newEmail}
                   onChangeText={setNewEmail}
+                  autoCapitalize="none"
                 />
                 <Input
-                  placeholder="Senha Provisória"
-                  secureTextEntry
+                  placeholder="Senha"
                   value={newPassword}
                   onChangeText={setNewPassword}
+                  secureTextEntry
                 />
                 <Button
                   title="Cadastrar Profissional"
                   onPress={() =>
                     handleCreateProfessional(newName, newEmail, newPassword)
                   }
+                  style={{ marginTop: 10 }}
                 />
               </>
             )}
-
             <TouchableOpacity
               style={styles.closeBtn}
               onPress={() => setModalType(null)}

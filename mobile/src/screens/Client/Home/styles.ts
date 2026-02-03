@@ -1,96 +1,115 @@
-import { StyleSheet, Platform } from "react-native";
+import { StyleSheet } from "react-native";
 import { colors } from "../../../theme/colors";
-import { fontFamily } from "../../../theme/fonts";
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? 60 : 50,
+    backgroundColor: "#09090B",
+    paddingTop: 60,
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
-    paddingHorizontal: 4, // Alinha visualmente com os cards
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  greeting: {
+    color: "#A1A1AA",
+    fontSize: 14,
+    fontFamily: "Montserrat_400Regular",
+  },
+  title: {
+    color: "#FFF",
+    fontSize: 20,
+    fontFamily: "PlayfairDisplay_700Bold",
   },
 
-  headerTitle: {
-    fontFamily: fontFamily.heading,
-    fontSize: 28,
-    color: colors.primary,
-    letterSpacing: 0.5,
+  // Avatar do Usuário (Canto Superior Direito)
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
 
-  listContent: {
-    paddingBottom: 40,
-    gap: 20, // Mais espaço entre os cards
-  },
-
-  // --- O NOVO CARD PREMIUM ---
-  card: {
+  searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
-
-    // Cor de fundo distinta do background principal
-    backgroundColor: colors.surface,
-
-    padding: 20,
-    borderRadius: 12, // Bordas mais arredondadas (moderno)
-
-    // Borda visível para separar as cores escuras
+    backgroundColor: "#18181B",
+    marginHorizontal: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-
-    // Sombra para dar profundidade (Elevated Look)
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8, // Sombra forte no Android
+    borderColor: "#27272A",
+  },
+  searchInput: {
+    flex: 1,
+    color: "#FFF",
+    fontFamily: "Montserrat_400Regular",
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
   },
 
-  // Avatar mais sofisticado
-  avatar: {
+  // Card
+  card: {
+    flexDirection: "row",
+    backgroundColor: "#18181B",
+    borderRadius: 12,
+    marginBottom: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#27272A",
+    alignItems: "center",
+  },
+  cardImage: {
     width: 60,
     height: 60,
-    backgroundColor: colors.primaryLight, // Fundo dourado suave
-    borderRadius: 30,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: "#27272A",
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.primary, // Aro dourado
+    marginBottom: 4,
   },
-
-  avatarText: {
-    fontFamily: fontFamily.heading,
-    color: colors.primary,
-    fontSize: 26,
-  },
-
   cardTitle: {
-    fontFamily: fontFamily.bodyBold,
-    color: colors.text, // Branco forte
-    fontSize: 18,
-    marginBottom: 6,
-    letterSpacing: 0.5,
+    color: "#FFF",
+    fontSize: 16,
+    fontFamily: "Montserrat_700Bold",
   },
-
-  cardDesc: {
-    fontFamily: fontFamily.body,
-    color: colors.textSecondary, // Cinza claro
-    fontSize: 14,
+  cardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
   },
-
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    textAlign: "center",
-    marginTop: 40,
+  rating: {
+    flexDirection: "row",
+    alignItems: "center",
+    // backgroundColor: '#27272A', // Removi o fundo para ficar mais limpo com texto longo
+    // paddingHorizontal: 6,
+    // paddingVertical: 2,
+    // borderRadius: 4,
+    marginRight: 8,
+  },
+  ratingText: {
+    color: "#71717A",
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  distance: {
+    color: "#71717A",
+    fontSize: 12,
+    fontFamily: "Montserrat_400Regular",
   },
 });

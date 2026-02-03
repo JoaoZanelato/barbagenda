@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http:/192.168.0.108:3333",
+  baseURL: "http://172.16.209.8:3333",
   timeout: 10000,
 });
 
@@ -16,7 +16,6 @@ api.interceptors.response.use(
     if (error.response) {
       console.error("[API Error]", error.response.data);
     } else if (error.request) {
-      // Dica para debug: Mostra qual endereço tentou acessar
       console.error(
         `[API Network Error] Falha ao conectar em ${api.defaults.baseURL}. O servidor está rodando? O IP está certo?`,
       );

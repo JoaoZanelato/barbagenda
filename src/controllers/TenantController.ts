@@ -10,24 +10,23 @@ export class TenantController {
         id: true,
         name: true,
         slug: true,
-        // 👇 Novos campos de Perfil e Endereço
+        // 👇 Agora enviamos a URL da logo
         logo_url: true,
-        cover_url: true,
-        phone: true, // WhatsApp
-        address: true, // Rua
+        phone: true,
+        address: true,
         address_num: true,
         neighborhood: true,
         city: true,
         state: true,
-        latitude: true, // Para o Mapa
-        longitude: true, // Para o Mapa
+        latitude: true,
+        longitude: true,
       },
     });
 
     return res.json(tenants);
   }
 
-  // 2. CRIAÇÃO (SaaS Admin)
+  // 2. CRIAÇÃO (SaaS Admin / Cadastro)
   async store(req: Request, res: Response) {
     const { name, slug, email, password, phone } = req.body;
 
@@ -42,29 +41,33 @@ export class TenantController {
     const passwordHash = await hash(password, 8);
 
     // Cria Tenant e Usuário Admin em uma transação
-    const result = await prisma.$transaction(async (prisma) => {
-      const tenant = await prisma.tenants.create({
-        data: { name, slug, phone },
+    try {
+      const result = await prisma.$transaction(async (prisma) => {
+        const tenant = await prisma.tenants.create({
+          data: { name, slug, phone },
+        });
+
+        const user = await prisma.users.create({
+          data: {
+            name,
+            email,
+            password_hash: passwordHash,
+            tenant_id: tenant.id,
+            role: "admin",
+            phone,
+          },
+        });
+
+        return { tenant, user };
       });
 
-      const user = await prisma.users.create({
-        data: {
-          name,
-          email,
-          password_hash: passwordHash,
-          tenant_id: tenant.id,
-          role: "admin",
-          phone,
-        },
-      });
-
-      return { tenant, user };
-    });
-
-    return res.json(result);
+      return res.json(result);
+    } catch (error) {
+      return res.status(500).json({ error: "Erro ao criar barbearia." });
+    }
   }
 
-  // 3. ATUALIZAR PERFIL DA BARBEARIA (Novo - Para a página de Configuração)
+  // 3. ATUALIZAR PERFIL DA BARBEARIA (Barbeiro Config)
   async update(req: Request, res: Response) {
     const tenant_id = req.tenant_id; // Vem do token do admin logado
     const data = req.body;

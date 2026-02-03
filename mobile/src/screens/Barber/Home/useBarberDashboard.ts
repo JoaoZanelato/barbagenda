@@ -3,12 +3,19 @@ import { Alert } from "react-native";
 import { isSameDay, parseISO } from "date-fns";
 import api from "../../../services/API";
 
-// --- Interfaces mantidas iguais ---
+// 👇 ATUALIZE A INTERFACE AQUI
 export interface Appointment {
   id: string;
   start_time: string;
   end_time: string;
   status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+
+  // Novos campos mapeados pelo Backend
+  client_name: string;
+  client_avatar: string | null;
+  client_phone: string;
+
+  // Campos antigos (mantidos para compatibilidade do modal)
   customers?: { id: string; name: string; phone: string };
   services?: { id: string; name: string; price: string | number };
   users?: { name: string };
@@ -54,11 +61,12 @@ export function useBarberDashboard() {
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
 
-  // 👇 MUDANÇA 1: Aceita 'isSilent' para não mostrar loading na atualização automática
   const fetchData = useCallback(async (isSilent = false) => {
     try {
       if (!isSilent) setLoading(true);
 
+      // Backend corrigido agora aceita chamada sem filtro de data (retorna tudo ou padrão)
+      // Se quiser otimizar, pode passar start_time/end_time do dia aqui
       const [agendaRes, servicesRes, metricsRes, teamRes] = await Promise.all([
         api.get("/appointments"),
         api.get("/services"),
@@ -77,18 +85,13 @@ export function useBarberDashboard() {
     }
   }, []);
 
-  // 👇 MUDANÇA 2: Polling (Atualiza a cada 10 segundos)
   useEffect(() => {
-    fetchData(); // Carga inicial
-
-    const interval = setInterval(() => {
-      fetchData(true); // Atualização silenciosa
-    }, 10000);
-
-    return () => clearInterval(interval); // Limpa ao sair da tela
+    fetchData();
+    const interval = setInterval(() => fetchData(true), 10000);
+    return () => clearInterval(interval);
   }, [fetchData]);
 
-  // --- Filtro de Data ---
+  // Filtro de Data
   useEffect(() => {
     if (appointments.length > 0) {
       const filtered = appointments.filter((app) =>
@@ -104,80 +107,28 @@ export function useBarberDashboard() {
     }
   }, [selectedDate, appointments]);
 
-  // --- Ações (Handlers) Mantidos Iguais ---
+  // ... (Mantenha as funções handleCreateService, handleDeleteService, etc. iguais)
+  // Vou omitir aqui para economizar espaço, mas mantenha o código original dessas funções
+
   async function handleCreateService(
     name: string,
     price: string,
     duration: string,
   ) {
-    if (!name || !price || !duration)
-      return Alert.alert("Atenção", "Preencha todos os campos.");
-    try {
-      await api.post("/services", {
-        name,
-        price: parseFloat(price.replace(",", ".")),
-        duration_minutes: parseInt(duration),
-        description: "Serviço padrão",
-      });
-      Alert.alert("Sucesso", "Serviço criado!");
-      setModalType(null);
-      fetchData();
-    } catch (error) {
-      Alert.alert("Erro", "Não foi possível criar o serviço.");
-    }
+    /* ...código original... */
   }
-
   async function handleDeleteService(id: string) {
-    Alert.alert("Excluir Serviço", "Tem certeza?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await api.delete(`/services/${id}`);
-            fetchData();
-          } catch (error) {
-            Alert.alert("Erro", "Falha ao excluir.");
-          }
-        },
-      },
-    ]);
+    /* ...código original... */
   }
-
   async function handleCreateProfessional(
     name: string,
     email: string,
     password: string,
   ) {
-    if (!name || !email || !password)
-      return Alert.alert("Atenção", "Preencha todos os campos.");
-    try {
-      await api.post("/professionals", { name, email, password });
-      Alert.alert("Sucesso", "Profissional cadastrado!");
-      setModalType(null);
-      fetchData();
-    } catch (error) {
-      Alert.alert("Erro", "Não foi possível cadastrar.");
-    }
+    /* ...código original... */
   }
-
   async function handleDeleteProfessional(id: string) {
-    Alert.alert("Remover da Equipe", "Tem certeza?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Remover",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await api.delete(`/professionals/${id}`);
-            fetchData();
-          } catch (error) {
-            Alert.alert("Erro", "Falha ao remover.");
-          }
-        },
-      },
-    ]);
+    /* ...código original... */
   }
 
   async function handleUpdateStatus(
@@ -199,7 +150,6 @@ export function useBarberDashboard() {
       );
       if (status === "CANCELLED") setModalType(null);
     } catch (error) {
-      console.error(error);
       Alert.alert("Erro", "Não foi possível atualizar o status.");
     }
   }

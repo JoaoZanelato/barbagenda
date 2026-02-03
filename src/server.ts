@@ -1,14 +1,26 @@
 import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser"; // 👈 IMPORTANTE
+import cookieParser from "cookie-parser";
+import path from "path"; // 👈 Importe path
+import fs from "fs"; // 👈 Importe fs
 import { router } from "./routes";
 import { CronService } from "./services/CronService";
 
 const app = express();
 
 app.use(express.json());
-app.use(cookieParser()); // 👈 ATIVA A LEITURA DE COOKIES
+app.use(cookieParser());
+
+// 👇 CRIA A PASTA UPLOADS SE NÃO EXISTIR
+const uploadFolder = path.resolve(__dirname, "..", "uploads");
+if (!fs.existsSync(uploadFolder)) {
+  fs.mkdirSync(uploadFolder, { recursive: true });
+  console.log("📁 Pasta 'uploads' criada com sucesso!");
+}
+
+// 👇 LIBERA ACESSO ÀS FOTOS (IMPORTANTE PARA O MOBILE VER A IMAGEM)
+app.use("/files", express.static(uploadFolder));
 
 app.use(
   cors({
@@ -21,10 +33,9 @@ app.use(
 
 app.use(router);
 
-// Middleware de Erro Global (Melhorado com Log)
+// Middleware de Erro Global
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error("❌ ERRO NO SERVIDOR:", err); // Log para debug
-
+  console.error("❌ ERRO NO SERVIDOR:", err);
   if (err instanceof Error) {
     return res.status(400).json({ error: err.message });
   }
@@ -34,7 +45,6 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Inicializa os Lembretes Automáticos
 new CronService();
 
 const PORT = process.env.PORT || 3333;

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import api from "../../../services/API";
@@ -18,16 +17,16 @@ export function useProfile(onLogout: () => void) {
 
   async function loadProfile() {
     try {
-      // 1. Imagem Local
-      const savedImage = await AsyncStorage.getItem("@barber:profile_image");
-      if (savedImage) setImage(savedImage);
-
-      // 2. Dados da API (Nome e Data)
       const response = await api.get("/mobile/profile");
       setUserName(response.data.name);
 
+      // Se tiver foto no banco, usa ela.
+      if (response.data.avatar_url) {
+        setImage(response.data.avatar_url);
+      }
+
       const date = new Date(response.data.created_at);
-      setMemberSince(format(date, "MMMM 'de' yyyy", { locale: ptBR })); // Ex: "fevereiro de 2026"
+      setMemberSince(format(date, "MMMM 'de' yyyy", { locale: ptBR }));
     } catch (error) {
       console.log("Erro ao carregar perfil:", error);
       setUserName("Cliente");
@@ -42,7 +41,7 @@ export function useProfile(onLogout: () => void) {
     if (status !== "granted") {
       Alert.alert(
         "Permissão necessária",
-        "Precisamos de acesso às suas fotos.",
+        "Precisamos de acesso às suas fotos para atualizar o perfil.",
       );
       return;
     }
@@ -55,9 +54,37 @@ export function useProfile(onLogout: () => void) {
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      const newImageUri = result.assets[0].uri;
-      setImage(newImageUri);
-      await AsyncStorage.setItem("@barber:profile_image", newImageUri);
+      const selectedImage = result.assets[0];
+
+      // Atualiza visualmente na hora
+      setImage(selectedImage.uri);
+
+      // Prepara Upload
+      const formData = new FormData();
+      formData.append("file", {
+        uri: selectedImage.uri,
+        name: "profile.jpg",
+        type: "image/jpeg",
+      } as any);
+
+      try {
+        // 1. Envia arquivo
+        const uploadResponse = await api.post("/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        const uploadedUrl = uploadResponse.data.url;
+
+        // 2. Salva URL no perfil do usuário no banco
+        await api.put("/mobile/profile", {
+          avatar_url: uploadedUrl,
+        });
+
+        Alert.alert("Sucesso", "Foto de perfil atualizada!");
+      } catch (error) {
+        Alert.alert("Erro", "Falha ao salvar a foto no servidor.");
+        console.log(error);
+      }
     }
   };
 
@@ -74,7 +101,7 @@ export function useProfile(onLogout: () => void) {
             try {
               await api.delete("/mobile/profile");
               Alert.alert("Conta excluída", "Sentiremos sua falta!");
-              onLogout(); // Desloga o usuário
+              onLogout();
             } catch (error) {
               Alert.alert("Erro", "Não foi possível excluir a conta.");
             }

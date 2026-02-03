@@ -4,12 +4,15 @@ import api from "../../../services/API";
 
 export function useClientHome() {
   const [tenants, setTenants] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null); // Estado para guardar o usuário
   const [loading, setLoading] = useState(true);
+
+  // Controle do Modal
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Estados de Favoritos
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]); // Lista de IDs favoritados
+  // Favoritos
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   useEffect(() => {
@@ -18,43 +21,43 @@ export function useClientHome() {
 
   async function loadData() {
     try {
-      setLoading(true);
+      // setLoading(true); // Opcional, para não piscar sempre que entra
 
-      // 1. Busca TODAS as barbearias
-      const responseTenants = await api.get("/mobile/tenants");
-      setTenants(responseTenants.data);
+      // Busca em paralelo: Perfil, Lojas e Favoritos
+      const [userRes, tenantsRes, favoritesRes] = await Promise.all([
+        api.get("/mobile/profile"),
+        api.get("/mobile/tenants"),
+        api.get("/mobile/favorites"),
+      ]);
 
-      // 2. Busca os FAVORITOS do usuário na API
-      const responseFavorites = await api.get("/mobile/favorites");
-      // A API retorna objetos completos, extraímos apenas os IDs para facilitar a verificação
-      const ids = responseFavorites.data.map((t: any) => t.id);
-      setFavoriteIds(ids);
+      setUser(userRes.data);
+      setTenants(tenantsRes.data);
+
+      const ids = favoritesRes.data.map((t: any) => t.id);
+      setFavorites(ids);
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("Erro ao carregar dados da home:", error);
     } finally {
       setLoading(false);
     }
   }
 
   async function toggleFavorite(tenantId: string) {
-    // Atualização Otimista (Muda na tela antes de confirmar no servidor)
-    const previouslyFavorite = favoriteIds.includes(tenantId);
-    let newFavoritesList = [...favoriteIds];
+    const previouslyFavorite = favorites.includes(tenantId);
+    let newFavoritesList = [...favorites];
 
     if (previouslyFavorite) {
       newFavoritesList = newFavoritesList.filter((id) => id !== tenantId);
     } else {
       newFavoritesList.push(tenantId);
     }
-    setFavoriteIds(newFavoritesList);
+    setFavorites(newFavoritesList);
 
     try {
-      // Chama a API para persistir
       await api.post(`/mobile/favorites/${tenantId}/toggle`);
     } catch (error) {
-      // Se der erro, reverte a mudança visual
+      setFavorites(favorites);
       Alert.alert("Erro", "Não foi possível atualizar o favorito.");
-      setFavoriteIds(favoriteIds); // Volta ao estado anterior
     }
   }
 
@@ -73,22 +76,22 @@ export function useClientHome() {
     handleCloseModal();
   }
 
-  // Lógica de Filtro na Tela
   const displayedTenants = showFavoritesOnly
-    ? tenants.filter((t) => favoriteIds.includes(t.id))
+    ? tenants.filter((t) => favorites.includes(t.id))
     : tenants;
 
   return {
     tenants: displayedTenants,
+    user, // Retorna o usuário para a View
     loading,
     selectedTenant,
     isModalOpen,
-    favorites: favoriteIds, // Passamos a lista de IDs para a View saber quem pintar de vermelho
+    favorites,
     showFavoritesOnly,
     setShowFavoritesOnly,
-    toggleFavorite,
     handleSelectTenant,
     handleCloseModal,
     handleSuccess,
+    toggleFavorite,
   };
 }
