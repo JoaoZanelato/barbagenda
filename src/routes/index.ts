@@ -41,12 +41,7 @@ router.post("/mobile/register", mobileAuthController.register);
 router.post("/mobile/login", mobileAuthController.login);
 
 // App Mobile - Listagem de Barbearias (Pública)
-router.get("/mobile/tenants", async (req, res) => {
-  const tenants = await prisma.tenants.findMany({
-    select: { id: true, name: true, slug: true },
-  });
-  return res.json(tenants);
-});
+router.get("/mobile/tenants", tenantController.index); // Agora usa o Controller atualizado
 
 // App Mobile - Dados da Barbearia Selecionada (Serviços e Profissionais)
 router.get("/mobile/tenants/:id/details", async (req, res) => {
@@ -74,7 +69,7 @@ router.get("/disponibilidade", availabilityController.handle);
 // ==========================================================
 // Todas estas rotas exigem o token do Cliente (ensureMobileAuth)
 
-// Perfil do Usuário (Novo)
+// Perfil do Usuário
 router.get("/mobile/profile", ensureMobileAuth, mobileAuthController.me);
 router.delete("/mobile/profile", ensureMobileAuth, mobileAuthController.delete);
 
@@ -129,7 +124,8 @@ router.post("/notifications/token", notificationController.saveBarberToken);
 router.get("/dashboard/metrics", dashboardController.index);
 
 // Tenants (Dados da Barbearia)
-router.get("/tenants", tenantController.index);
+router.get("/tenants", tenantController.index); // Listagem genérica
+router.put("/tenants/profile", tenantController.update); // 👈 ATUALIZAR PERFIL DA BARBEARIA
 
 // Atualizar Token Push (Genérico)
 router.patch("/users/push-token", async (req, res) => {

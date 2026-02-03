@@ -3,87 +3,111 @@ import { prisma } from "../prisma/client";
 import { hash } from "bcryptjs";
 
 export class TenantController {
-  
-  // 1. LISTAR (Modo de Segurança Máxima)
+  // 1. LISTAGEM PARA O APP (Pública)
   async index(req: Request, res: Response) {
-    try {
-      console.log("🔍 Buscando barbearias...");
-      
-      // Tenta buscar. Se o banco estiver desalinhado, vai falhar aqui.
-      const tenants = await prisma.tenants.findMany();
+    const tenants = await prisma.tenants.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        // 👇 Novos campos de Perfil e Endereço
+        logo_url: true,
+        cover_url: true,
+        phone: true, // WhatsApp
+        address: true, // Rua
+        address_num: true,
+        neighborhood: true,
+        city: true,
+        state: true,
+        latitude: true, // Para o Mapa
+        longitude: true, // Para o Mapa
+      },
+    });
 
-      console.log(`✅ Sucesso! Encontradas: ${tenants.length}`);
-      return res.json(tenants);
-
-    } catch (error: any) {
-      // SE DER ERRO, NÃO TRAVA O FRONTEND!
-      // Loga o erro real no terminal para você corrigir depois
-      console.error("⚠️ ERRO DE BANCO DE DADOS (Ignorado para não travar):");
-      console.error(error.message);
-
-      // Retorna lista vazia para o Frontend carregar a tela "Nenhuma barbearia"
-      return res.json([]); 
-    }
+    return res.json(tenants);
   }
 
-  // 2. CRIAR (Mantido igual)
+  // 2. CRIAÇÃO (SaaS Admin)
   async store(req: Request, res: Response) {
-    const { name, slug, userName, email, password, phone } = req.body;
+    const { name, slug, email, password, phone } = req.body;
 
-    if (!name || !slug || !userName || !email || !password || !phone) {
-      return res.status(400).json({ error: "Preencha todos os campos." });
+    // Verifica se já existe email ou slug
+    const tenantExists = await prisma.tenants.findUnique({ where: { slug } });
+    const userExists = await prisma.users.findUnique({ where: { email } });
+
+    if (tenantExists || userExists) {
+      return res.status(400).json({ error: "Slug ou Email já em uso." });
     }
 
-    try {
-      // Verifica duplicidade (Slug e Email)
-      const slugExists = await prisma.tenants.findUnique({ where: { slug } });
-      if (slugExists) return res.status(400).json({ error: "Este link (slug) já existe." });
+    const passwordHash = await hash(password, 8);
 
-      const emailExists = await prisma.users.findUnique({ where: { email } });
-      if (emailExists) return res.status(400).json({ error: "Este e-mail já tem cadastro." });
-
-      // Criação segura com transação
-      const result = await prisma.$transaction(async (tx) => {
-        const tenant = await tx.tenants.create({
-          data: {
-            name,
-            slug,
-            plan_status: "active",
-            operating_hours: {
-              create: [
-                { day_of_week: 1, open_time: "09:00", close_time: "18:00" },
-                { day_of_week: 2, open_time: "09:00", close_time: "18:00" },
-                { day_of_week: 3, open_time: "09:00", close_time: "18:00" },
-                { day_of_week: 4, open_time: "09:00", close_time: "18:00" },
-                { day_of_week: 5, open_time: "09:00", close_time: "18:00" },
-                { day_of_week: 6, open_time: "09:00", close_time: "14:00" },
-              ]
-            }
-          },
-        });
-
-        const passwordHash = await hash(password, 8);
-        
-        const user = await tx.users.create({
-          data: {
-            name: userName,
-            email,
-            phone,
-            password_hash: passwordHash,
-            role: "barber",
-            tenant_id: tenant.id,
-            active: true,
-          },
-        });
-
-        return { tenant, user };
+    // Cria Tenant e Usuário Admin em uma transação
+    const result = await prisma.$transaction(async (prisma) => {
+      const tenant = await prisma.tenants.create({
+        data: { name, slug, phone },
       });
 
-      return res.status(201).json(result);
+      const user = await prisma.users.create({
+        data: {
+          name,
+          email,
+          password_hash: passwordHash,
+          tenant_id: tenant.id,
+          role: "admin",
+          phone,
+        },
+      });
 
-    } catch (error: any) {
-      console.error("❌ Erro ao criar:", error);
-      return res.status(400).json({ error: error.message || "Erro ao criar barbearia." });
+      return { tenant, user };
+    });
+
+    return res.json(result);
+  }
+
+  // 3. ATUALIZAR PERFIL DA BARBEARIA (Novo - Para a página de Configuração)
+  async update(req: Request, res: Response) {
+    const tenant_id = req.tenant_id; // Vem do token do admin logado
+    const data = req.body;
+
+    // Filtra apenas campos permitidos para atualização
+    const {
+      logo_url,
+      cover_url,
+      description,
+      phone,
+      address,
+      address_num,
+      neighborhood,
+      city,
+      state,
+      zip_code,
+      latitude,
+      longitude,
+    } = data;
+
+    try {
+      const tenant = await prisma.tenants.update({
+        where: { id: tenant_id },
+        data: {
+          logo_url,
+          cover_url,
+          description,
+          phone,
+          address,
+          address_num,
+          neighborhood,
+          city,
+          state,
+          zip_code,
+          latitude,
+          longitude,
+        },
+      });
+      return res.json(tenant);
+    } catch (error) {
+      return res
+        .status(400)
+        .json({ error: "Erro ao atualizar perfil da barbearia." });
     }
   }
 }
