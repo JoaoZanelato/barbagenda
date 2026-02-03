@@ -19,15 +19,26 @@ export function ensureMobileAuth(
 
   const [, token] = authToken.split(" ");
 
+  if (!process.env.JWT_SECRET) {
+    console.error("❌ ERRO GRAVE: JWT_SECRET não definido.");
+    return res.status(500).json({ error: "Erro interno de configuração" });
+  }
+
   try {
-    const { phone, clientId } = verify(
+    const { phone } = verify(
       token,
       process.env.JWT_SECRET as string,
     ) as IPayload;
 
-    // Injeta dados do usuário na requisição
+    // 👇 A CORREÇÃO MÁGICA ESTÁ AQUI:
+    // Se req.body não existir (comum em GET), criamos um objeto vazio.
+    if (!req.body) {
+      req.body = {};
+    }
+
+    // Agora é seguro injetar os dados
     req.body.authenticatedPhone = phone;
-    req.body.authenticatedName = "Cliente App"; // Fallback simples
+    req.body.authenticatedName = "Cliente App";
 
     return next();
   } catch (err) {

@@ -38,9 +38,7 @@
         {
           "icon": "./assets/images/notification_icon.png",
           "color": "#FF231F7C",
-          "sounds": [
-            "./assets/sounds/scissor.wav"
-          ]
+          "sounds": ["./assets/sounds/scissor.wav"]
         }
       ]
     ],

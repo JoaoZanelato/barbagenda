@@ -6,21 +6,19 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
-import { LogOut, MapPin } from "lucide-react-native";
+import { LogOut, MapPin, Calendar as CalendarIcon } from "lucide-react-native";
 import { styles } from "./styles";
 import { useClientHome } from "./useClientHome";
 import { colors } from "../../../theme/colors";
-import { useNotifications } from "../../../hooks/useNotifications"; // 👈 Importe
-
-// Importação do Modal
+import { useNotifications } from "../../../hooks/useNotifications";
 import { SchedulingModal } from "../../../components/SchedulingModal";
 
 interface Props {
   onLogout: () => void;
+  onGoToAppointments: () => void; // 👈 Nova Propriedade Obrigatória
 }
 
-export function ClientHome({ onLogout }: Props) {
-  // 👇 Ativa Notificações (Cliente = false)
+export function ClientHome({ onLogout, onGoToAppointments }: Props) {
   useNotifications(false);
 
   const {
@@ -49,6 +47,33 @@ export function ClientHome({ onLogout }: Props) {
           <LogOut size={24} color={colors.error} />
         </TouchableOpacity>
       </View>
+
+      {/* Botão Corrigido */}
+      <TouchableOpacity
+        style={{
+          backgroundColor: "#27272A",
+          margin: 20,
+          marginBottom: 10,
+          padding: 15,
+          borderRadius: 8,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          borderWidth: 1,
+          borderColor: "#3F3F46",
+        }}
+        onPress={onGoToAppointments} // 👈 Chama a função direta do App.tsx
+      >
+        <CalendarIcon
+          size={20}
+          color={colors.primary}
+          style={{ marginRight: 10 }}
+        />
+        <Text style={{ color: "#FFF", fontWeight: "bold" }}>
+          Ver Meus Agendamentos
+        </Text>
+      </TouchableOpacity>
+
       <FlatList
         data={tenants}
         keyExtractor={(item) => item.id}

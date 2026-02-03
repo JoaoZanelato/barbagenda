@@ -14,32 +14,34 @@ import {
   Montserrat_700Bold,
 } from "@expo-google-fonts/montserrat";
 
-// Telas e Cores
+// Telas
 import { Welcome } from "./src/screens/Welcome";
 import { ClientAuth } from "./src/screens/Client/Auth";
 import { ClientHome } from "./src/screens/Client/Home";
+import { MyAppointments } from "./src/screens/Client/MyAppointments"; // 👈 Importe a nova tela
 import { BarberAuth } from "./src/screens/Barber/Auth";
 import { BarberDashboard } from "./src/screens/Barber/Home";
 import { colors } from "./src/theme/colors";
 
-// Mantém a splash screen visível enquanto carrega
 SplashScreen.preventAutoHideAsync();
 
 type Role = "none" | "barber" | "client";
 type AuthState = "guest" | "authenticated";
+type ClientScreenState = "home" | "appointments"; // 👈 Novo Tipo
 
 export default function App() {
   const [role, setRole] = useState<Role>("none");
   const [auth, setAuth] = useState<AuthState>("guest");
 
-  // Carregar Fontes
+  // 👇 Estado para controlar a navegação do cliente
+  const [clientView, setClientView] = useState<ClientScreenState>("home");
+
   let [fontsLoaded] = useFonts({
     PlayfairDisplay_700Bold,
     Montserrat_400Regular,
     Montserrat_700Bold,
   });
 
-  // Esconde a splash screen quando as fontes estiverem prontas
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync();
@@ -58,6 +60,7 @@ export default function App() {
   const handleLogout = () => {
     setAuth("guest");
     setRole("none");
+    setClientView("home"); // Reseta a tela do cliente
     api.defaults.headers.common["Authorization"] = "";
   };
 
@@ -68,7 +71,7 @@ export default function App() {
     >
       <StatusBar style="light" translucent backgroundColor="transparent" />
 
-      {/* 1. Tela Inicial (Escolha de Perfil) */}
+      {/* 1. Tela Inicial */}
       {role === "none" && <Welcome onSelectRole={setRole} />}
 
       {/* 2. Fluxo BARBEIRO */}
@@ -89,9 +92,24 @@ export default function App() {
           onBack={() => setRole("none")}
         />
       )}
-      {role === "client" && auth === "authenticated" && (
-        <ClientHome onLogout={handleLogout} />
-      )}
+
+      {/* 👇 A MÁGICA ACONTECE AQUI: Trocamos a tela baseado no estado clientView */}
+      {role === "client" &&
+        auth === "authenticated" &&
+        clientView === "home" && (
+          <ClientHome
+            onLogout={handleLogout}
+            onGoToAppointments={() => setClientView("appointments")} // Passa a função de navegar
+          />
+        )}
+
+      {role === "client" &&
+        auth === "authenticated" &&
+        clientView === "appointments" && (
+          <MyAppointments
+            onBack={() => setClientView("home")} // Passa a função de voltar
+          />
+        )}
     </View>
   );
 }

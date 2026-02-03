@@ -1,4 +1,4 @@
-import { Expo } from "expo-server-sdk";
+import { Expo } from "expo-server-sdk"; // Certifique-se de ter rodado: npm install expo-server-sdk
 
 export class NotificationService {
   private expo: Expo;
@@ -8,7 +8,6 @@ export class NotificationService {
   }
 
   async send(pushToken: string, title: string, body: string) {
-    // Verifica se é um token válido da Expo
     if (!Expo.isExpoPushToken(pushToken)) {
       console.error(`Push token inválido: ${pushToken}`);
       return;
@@ -18,31 +17,30 @@ export class NotificationService {
 
     messages.push({
       to: pushToken,
-      sound: "default", // Fallback para iOS (o iOS usa 'default' ou nome do arquivo se estiver no bundle)
+      sound: "default", // iOS usa default ou nome do arquivo
       title: title,
       body: body,
-      data: { url: "/agendamentos" }, // Dados extras opcionais
+      data: { url: "/agendamentos" },
 
-      // 👇 O SEGREDO: Força o Android a usar o canal que configuramos com o som personalizado
-      channelId: "barber-sound-v2",
+      // 👇 O SEGREDO: Tem que bater com o nome do canal no Mobile (V3)
+      channelId: "barber-sound-v3",
 
       priority: "high",
     });
 
     try {
-      // Envia a notificação
       const chunks = this.expo.chunkPushNotifications(messages);
 
       for (const chunk of chunks) {
         try {
           await this.expo.sendPushNotificationsAsync(chunk);
-          console.log("🔔 Notificação enviada para a Expo (Canal V2)!");
+          console.log("🔔 Notificação enviada (Canal V3)!");
         } catch (error) {
-          console.error("Erro ao enviar chunk de notificação:", error);
+          console.error("Erro no envio:", error);
         }
       }
     } catch (error) {
-      console.error("Erro geral no serviço de notificação:", error);
+      console.error("Erro geral notificação:", error);
     }
   }
 }

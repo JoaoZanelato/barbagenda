@@ -73,6 +73,18 @@ router.post("/mobile/appointments", ensureMobileAuth, async (req, res) => {
   return appointmentController.store(req, res);
 });
 
+// 👇 ROTAS NOVAS DE AGENDAMENTO
+router.get(
+  "/mobile/my-appointments",
+  ensureMobileAuth,
+  appointmentController.listMobile,
+);
+router.patch(
+  "/mobile/appointments/:id/cancel",
+  ensureMobileAuth,
+  appointmentController.cancelMobile,
+);
+
 // Rota para o App Mobile atualizar o token de notificação
 router.patch("/users/push-token", ensureAuthenticated, async (req, res) => {
   const { token } = req.body;
