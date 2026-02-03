@@ -30,7 +30,6 @@ export function MyAppointments({ onBack }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <ArrowLeft color="#FFF" size={24} />
@@ -39,7 +38,6 @@ export function MyAppointments({ onBack }: Props) {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* ABAS (TABS) */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === "upcoming" && styles.activeTab]}
@@ -54,7 +52,6 @@ export function MyAppointments({ onBack }: Props) {
             Agendados
           </Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.tab, activeTab === "history" && styles.activeTab]}
           onPress={() => setActiveTab("history")}
@@ -70,7 +67,6 @@ export function MyAppointments({ onBack }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* LISTA */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} size="large" />
@@ -95,11 +91,6 @@ export function MyAppointments({ onBack }: Props) {
                 {activeTab === "upcoming"
                   ? "Sem cortes agendados"
                   : "Histórico vazio"}
-              </Text>
-              <Text style={styles.emptySub}>
-                {activeTab === "upcoming"
-                  ? "Você não tem nenhum horário marcado para os próximos dias."
-                  : "Seus agendamentos antigos aparecerão aqui."}
               </Text>
             </View>
           }

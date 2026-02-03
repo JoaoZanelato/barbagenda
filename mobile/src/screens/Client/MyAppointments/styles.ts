@@ -70,7 +70,7 @@ export const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  // Cards (Usados no componente AppointmentCard)
+  // Cards
   card: {
     backgroundColor: "#18181B",
     padding: 16,
