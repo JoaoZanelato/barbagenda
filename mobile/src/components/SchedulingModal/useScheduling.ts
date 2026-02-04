@@ -68,7 +68,6 @@ export function useScheduling(
           },
         })
         .then((res) => {
-          // Pega o array dentro do objeto retornado
           setSlots(res.data.horariosLivres || []);
         })
         .catch((err) => {
@@ -80,35 +79,36 @@ export function useScheduling(
   }, [step, selectedDate, selectedPro, totalDuration, tenantId]);
 
   function toggleService(service: any) {
+    // Lógica para permitir apenas 1 serviço por vez (simplificação para evitar erros no backend atual)
     if (selectedServices.find((s) => s.id === service.id)) {
-      setSelectedServices(selectedServices.filter((s) => s.id !== service.id));
+      setSelectedServices([]);
     } else {
-      setSelectedServices([...selectedServices, service]);
+      setSelectedServices([service]);
     }
   }
 
-  // 👇 CORREÇÃO AQUI
+  // 👇 FUNÇÃO CORRIGIDA PARA ENVIAR OS CAMPOS CERTOS AO BACKEND
   async function handleFinish() {
-    if (!selectedSlot) return;
+    if (!selectedSlot || !selectedPro || selectedServices.length === 0) return;
     setLoading(true);
 
     try {
-      // Combina Data (YYYY-MM-DD) + Hora (HH:mm) para formar ISO válido
-      // Ex: 2026-01-29T14:30:00
       const fullDateTime = `${selectedDate}T${selectedSlot}:00`;
 
       await api.post("/mobile/appointments", {
-        professionalId: selectedPro,
-        startTime: fullDateTime, // AGORA SIM É UMA DATA VÁLIDA
-        services: selectedServices.map((s) => ({
-          id: s.id,
-          duration: s.duration_minutes,
-        })),
+        // CORREÇÃO: Usando snake_case para bater com o AppointmentController.ts
+        professional_id: selectedPro,
+        service_id: selectedServices[0].id, // Envia o ID do primeiro serviço selecionado
+        start_time: fullDateTime,
       });
+
       onSuccess();
-    } catch (err) {
-      console.log(err);
-      Alert.alert("Erro", "Não foi possível realizar o agendamento.");
+    } catch (err: any) {
+      console.log(err.response?.data || err);
+      Alert.alert(
+        "Erro",
+        err.response?.data?.error || "Não foi possível realizar o agendamento.",
+      );
     } finally {
       setLoading(false);
     }

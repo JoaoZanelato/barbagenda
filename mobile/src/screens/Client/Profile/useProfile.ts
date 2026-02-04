@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native"; // 👈 Importante: Platform
 import * as ImagePicker from "expo-image-picker";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -20,13 +20,14 @@ export function useProfile(onLogout: () => void) {
       const response = await api.get("/mobile/profile");
       setUserName(response.data.name);
 
-      // Se tiver foto no banco, usa ela.
       if (response.data.avatar_url) {
         setImage(response.data.avatar_url);
       }
 
-      const date = new Date(response.data.created_at);
-      setMemberSince(format(date, "MMMM 'de' yyyy", { locale: ptBR }));
+      if (response.data.created_at) {
+        const date = new Date(response.data.created_at);
+        setMemberSince(format(date, "MMMM 'de' yyyy", { locale: ptBR }));
+      }
     } catch (error) {
       console.log("Erro ao carregar perfil:", error);
       setUserName("Cliente");
@@ -36,6 +37,7 @@ export function useProfile(onLogout: () => void) {
   }
 
   const pickImage = async () => {
+    // 1. Permissões
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== "granted") {
@@ -46,8 +48,10 @@ export function useProfile(onLogout: () => void) {
       return;
     }
 
+    // 2. Abre a Galeria (CORRIGIDO: MediaType.Images)
+    // O erro estava aqui: MediaTypeOptions não deve ser usado
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaType.Images, // 👈 Correção Vital
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
@@ -55,35 +59,50 @@ export function useProfile(onLogout: () => void) {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const selectedImage = result.assets[0];
+      setImage(selectedImage.uri); // Preview imediato
 
-      // Atualiza visualmente na hora
-      setImage(selectedImage.uri);
-
-      // Prepara Upload
+      // 3. Montagem do Arquivo (CORRIGIDO PARA EVITAR ERROS DE REDE)
       const formData = new FormData();
+
+      // Ajuste de URI para iOS (remove file://)
+      const uri =
+        Platform.OS === "ios"
+          ? selectedImage.uri.replace("file://", "")
+          : selectedImage.uri;
+
+      // Pega o nome real do arquivo ou gera um
+      const filename = uri.split("/").pop() || "profile.jpg";
+
+      // Infere o tipo (jpg/png)
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
       formData.append("file", {
-        uri: selectedImage.uri,
-        name: "profile.jpg",
-        type: "image/jpeg",
+        uri,
+        name: filename,
+        type,
       } as any);
 
       try {
-        // 1. Envia arquivo
+        console.log("Enviando foto...");
+
+        // Timeout aumentado para uploads
         const uploadResponse = await api.post("/upload", formData, {
           headers: { "Content-Type": "multipart/form-data" },
+          timeout: 20000,
         });
 
         const uploadedUrl = uploadResponse.data.url;
 
-        // 2. Salva URL no perfil do usuário no banco
+        // Atualiza no banco
         await api.put("/mobile/profile", {
           avatar_url: uploadedUrl,
         });
 
         Alert.alert("Sucesso", "Foto de perfil atualizada!");
       } catch (error) {
-        Alert.alert("Erro", "Falha ao salvar a foto no servidor.");
-        console.log(error);
+        console.error("Erro no upload:", error);
+        Alert.alert("Erro", "Falha ao enviar a imagem. Verifique sua conexão.");
       }
     }
   };
@@ -91,7 +110,7 @@ export function useProfile(onLogout: () => void) {
   const handleDeleteAccount = () => {
     Alert.alert(
       "Excluir Conta",
-      "Tem certeza? Todos os seus dados e agendamentos serão perdidos permanentemente.",
+      "Tem certeza? Todos os seus dados serão perdidos.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -100,7 +119,6 @@ export function useProfile(onLogout: () => void) {
           onPress: async () => {
             try {
               await api.delete("/mobile/profile");
-              Alert.alert("Conta excluída", "Sentiremos sua falta!");
               onLogout();
             } catch (error) {
               Alert.alert("Erro", "Não foi possível excluir a conta.");

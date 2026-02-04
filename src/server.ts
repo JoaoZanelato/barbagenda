@@ -19,6 +19,10 @@ if (!fs.existsSync(uploadFolder)) {
   console.log("📁 Pasta 'uploads' criada com sucesso!");
 }
 
+// Aumenta o limite de JSON e URL-encoded
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
 // 👇 LIBERA ACESSO ÀS FOTOS (IMPORTANTE PARA O MOBILE VER A IMAGEM)
 app.use("/files", express.static(uploadFolder));
 
