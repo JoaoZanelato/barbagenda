@@ -2,8 +2,8 @@ import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import path from "path"; // 👈 Importe path
-import fs from "fs"; // 👈 Importe fs
+import path from "path";
+import fs from "fs";
 import { router } from "./routes";
 import { CronService } from "./services/CronService";
 
@@ -12,44 +12,37 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// 👇 CRIA A PASTA UPLOADS SE NÃO EXISTIR
+// 👇 1. GARANTE QUE A PASTA UPLOADS EXISTE
 const uploadFolder = path.resolve(__dirname, "..", "uploads");
 if (!fs.existsSync(uploadFolder)) {
   fs.mkdirSync(uploadFolder, { recursive: true });
-  console.log("📁 Pasta 'uploads' criada com sucesso!");
 }
 
-// Aumenta o limite de JSON e URL-encoded
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
-// 👇 LIBERA ACESSO ÀS FOTOS (IMPORTANTE PARA O MOBILE VER A IMAGEM)
+// 👇 2. LIBERA O ACESSO ÀS IMAGENS PELO NAVEGADOR/CELULAR
+// Agora, acessar http://IP:3333/files/foto.jpg vai mostrar a imagem
 app.use("/files", express.static(uploadFolder));
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: "*", // Libera geral para desenvolvimento
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
 app.use(router);
 
-// Middleware de Erro Global
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error("❌ ERRO NO SERVIDOR:", err);
-  if (err instanceof Error) {
-    return res.status(400).json({ error: err.message });
-  }
-  return res.status(500).json({
-    status: "error",
-    message: "Internal Server Error",
-  });
+  if (err instanceof Error) return res.status(400).json({ error: err.message });
+  return res
+    .status(500)
+    .json({ status: "error", message: "Internal Server Error" });
 });
 
 new CronService();
 
 const PORT = process.env.PORT || 3333;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT} 🚀`));
+// 👇 Mostra o IP no terminal para facilitar
+app.listen(PORT, "0.0.0.0", () =>
+  console.log(`🚀 Server rodando na porta ${PORT}`),
+);

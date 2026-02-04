@@ -2,15 +2,16 @@ import React from "react";
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
-  Image,
   ScrollView,
+  Image,
+  TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { Camera, Save, LogOut } from "lucide-react-native";
-import { styles } from "./styles";
 import { useStoreConfig } from "./useStoreConfig";
+import { styles } from "./styles";
+import { Input } from "../../../components/Input";
+import { Button } from "../../../components/Button";
+import { signOutBarber } from "../../../services/authService"; // 👈 Importe isso
 
 interface Props {
   onLogout: () => void;
@@ -20,84 +21,88 @@ export function StoreConfig({ onLogout }: Props) {
   const { data, setData, loading, handlePickImage, handleSave } =
     useStoreConfig();
 
+  // 👇 Função de Logout do Barbeiro
+  const handleBarberLogout = async () => {
+    await signOutBarber();
+    onLogout();
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Minha Barbearia</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Configuração da Loja</Text>
+      </View>
 
-      {/* Upload de Logo */}
-      <View style={styles.logoContainer}>
-        <TouchableOpacity onPress={handlePickImage} style={styles.logoButton}>
-          {data.logo_url ? (
-            <Image source={{ uri: data.logo_url }} style={styles.logoImage} />
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Logo Upload */}
+        <View style={styles.logoContainer}>
+          <TouchableOpacity onPress={handlePickImage} style={styles.logoButton}>
+            {data.logo_url ? (
+              <Image source={{ uri: data.logo_url }} style={styles.logo} />
+            ) : (
+              <View style={styles.placeholderLogo}>
+                <Text style={styles.placeholderText}>+ Logo</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.hint}>Toque para alterar a logo</Text>
+        </View>
+
+        <Input
+          placeholder="Nome da Barbearia"
+          value={data.name}
+          onChangeText={(t) => setData({ ...data, name: t })}
+        />
+
+        <Input
+          placeholder="Telefone"
+          value={data.phone}
+          onChangeText={(t) => setData({ ...data, phone: t })}
+          keyboardType="phone-pad"
+        />
+
+        <Input
+          placeholder="Endereço"
+          value={data.address}
+          onChangeText={(t) => setData({ ...data, address: t })}
+        />
+
+        <View style={styles.row}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Input
+              placeholder="Número"
+              value={data.address_num}
+              onChangeText={(t) => setData({ ...data, address_num: t })}
+            />
+          </View>
+          <View style={{ flex: 2 }}>
+            <Input
+              placeholder="Bairro"
+              value={data.neighborhood}
+              onChangeText={(t) => setData({ ...data, neighborhood: t })}
+            />
+          </View>
+        </View>
+
+        <View style={{ marginTop: 24 }}>
+          {loading ? (
+            <ActivityIndicator color="#FF231F7C" />
           ) : (
-            <Camera color="#71717A" />
+            <Button title="Salvar Alterações" onPress={handleSave} />
           )}
+        </View>
+
+        {/* Botão de Logout */}
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleBarberLogout}
+        >
+          <Text style={styles.logoutText}>Sair da Conta</Text>
         </TouchableOpacity>
-        <Text style={styles.logoText}>Alterar Logo</Text>
-      </View>
 
-      {/* Formulário */}
-      <Text style={styles.label}>Nome da Barbearia</Text>
-      <TextInput
-        style={styles.input}
-        value={data.name}
-        onChangeText={(t) => setData({ ...data, name: t })}
-        placeholderTextColor="#52525B"
-      />
-
-      <Text style={styles.label}>WhatsApp</Text>
-      <TextInput
-        style={styles.input}
-        value={data.phone}
-        onChangeText={(t) => setData({ ...data, phone: t })}
-        keyboardType="phone-pad"
-      />
-
-      <Text style={styles.label}>Endereço (Rua)</Text>
-      <TextInput
-        style={styles.input}
-        value={data.address}
-        onChangeText={(t) => setData({ ...data, address: t })}
-      />
-
-      <View style={styles.row}>
-        <View style={styles.flex1}>
-          <Text style={styles.label}>Número</Text>
-          <TextInput
-            style={styles.input}
-            value={data.address_num}
-            onChangeText={(t) => setData({ ...data, address_num: t })}
-          />
-        </View>
-        <View style={styles.flex2}>
-          <Text style={styles.label}>Bairro</Text>
-          <TextInput
-            style={styles.input}
-            value={data.neighborhood}
-            onChangeText={(t) => setData({ ...data, neighborhood: t })}
-          />
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={styles.saveButton}
-        onPress={handleSave}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#09090B" />
-        ) : (
-          <>
-            <Save size={20} color="#09090B" />
-            <Text style={styles.saveText}>Salvar Alterações</Text>
-          </>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
-        <LogOut size={20} color="#EF4444" />
-        <Text style={styles.logoutText}>Sair da conta</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Espaço extra no final */}
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </View>
   );
 }

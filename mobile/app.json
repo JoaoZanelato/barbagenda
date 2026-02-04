@@ -40,6 +40,12 @@
           "color": "#FF231F7C",
           "sounds": ["./assets/sounds/scissor.wav"]
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permita o acesso às suas fotos para atualizar o perfil."
+        }
       ]
     ],
     "extra": {

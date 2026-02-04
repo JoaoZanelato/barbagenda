@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native"; // 👈 Importante: Platform
 import * as ImagePicker from "expo-image-picker";
 import api from "../../../services/API";
 
@@ -18,20 +18,45 @@ export function useStoreConfig() {
     loadData();
   }, []);
 
+  // 👇 Função para corrigir URLs antigas (localhost -> IP real)
+  const fixImageURL = (url: string) => {
+    if (!url) return "";
+    const baseURL = api.defaults.baseURL; // Pega o IP configurado (http://192...)
+    if (!baseURL) return url;
+
+    if (url.includes("localhost") || url.includes("127.0.0.1")) {
+      return url.replace(/http:\/\/(localhost|127\.0\.0\.1):3333/g, baseURL);
+    }
+    return url;
+  };
+
   async function loadData() {
     try {
-      // Busca a lista de tenants (Como é admin, geralmente traz o dele ou a lista toda)
-      // Ajuste conforme sua API real. Aqui assumimos que pega o primeiro da lista pública ou privada.
       const response = await api.get("/tenants");
-      if (response.data.length > 0) setData(response.data[0]);
+      if (response.data.length > 0) {
+        const tenant = response.data[0];
+        // Aplica a correção na logo ao carregar
+        setData({
+          ...tenant,
+          logo_url: fixImageURL(tenant.logo_url),
+        });
+      }
     } catch (error) {
       console.log("Erro ao carregar dados da loja", error);
     }
   }
 
   async function handlePickImage() {
+    // 1. Permissões
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permissão necessária", "Precisamos de acesso às fotos.");
+      return;
+    }
+
+    // 2. Seleção (Sintaxe Nova)
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"], // 👈 Correção do botão travado
       allowsEditing: true,
       quality: 0.7,
     });
@@ -39,25 +64,45 @@ export function useStoreConfig() {
     if (!result.canceled && result.assets[0]) {
       const selectedImage = result.assets[0];
 
-      // Cria o FormData para envio
+      // 3. Montagem do Arquivo (Correção do Network Error)
       const formData = new FormData();
+
+      const uri =
+        Platform.OS === "ios"
+          ? selectedImage.uri.replace("file://", "")
+          : selectedImage.uri;
+
+      const filename = uri.split("/").pop() || "logo.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
       formData.append("file", {
-        uri: selectedImage.uri,
-        name: "logo.jpg", // Nome fixo ou dinâmico
-        type: "image/jpeg", // Mime type
+        uri,
+        name: filename,
+        type,
       } as any);
 
       try {
         setLoading(true);
+        console.log("Enviando logo...");
+
         const response = await api.post("/upload", formData, {
           headers: { "Content-Type": "multipart/form-data" },
+          timeout: 20000,
         });
 
-        // Atualiza o estado com a URL retornada do servidor
-        setData((prev) => ({ ...prev, logo_url: response.data.url }));
+        const uploadedUrl = response.data.url;
+
+        // Atualiza estado com a URL (já corrigida para exibir na hora)
+        setData((prev) => ({
+          ...prev,
+          logo_url: fixImageURL(uploadedUrl),
+        }));
+
         Alert.alert("Sucesso", "Logo enviada!");
       } catch (error) {
-        Alert.alert("Erro", "Falha ao enviar imagem.");
+        console.error("Erro upload:", error);
+        Alert.alert("Erro", "Falha ao enviar imagem. Verifique a rede.");
       } finally {
         setLoading(false);
       }

@@ -2,36 +2,75 @@ import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
 
 export class NotificationController {
-  // Salva o token do Barbeiro (Admin/Profissional)
+  // --- BARBEIRO ---
+
+  // Salvar Token
   async saveBarberToken(req: Request, res: Response) {
     const { token } = req.body;
-    // Pega o ID do usuário logado (injetado pelo middleware ensureAuthenticated)
     const user_id = (req as any).user_id;
 
-    if (!token) {
-      return res.status(400).json({ error: "Token não enviado." });
-    }
+    if (!token) return res.status(400).json({ error: "Token ausente" });
 
     try {
-      console.log(`📝 Salvando Push Token para usuário ${user_id}...`);
-
       await prisma.users.update({
         where: { id: user_id },
         data: { push_token: token },
       });
-
-      console.log("✅ Token salvo com sucesso!");
       return res.status(200).send();
     } catch (error) {
-      console.error("❌ Erro ao salvar token:", error);
-      return res.status(500).json({ error: "Erro interno ao salvar token" });
+      return res.status(500).json({ error: "Erro ao salvar token barber" });
     }
   }
 
-  // Salva o token do Cliente Final (App Cliente)
+  // Remover Token (Logout)
+  async removeBarberToken(req: Request, res: Response) {
+    const user_id = (req as any).user_id;
+
+    try {
+      await prisma.users.update({
+        where: { id: user_id },
+        data: { push_token: null }, // 🗑️ Limpa o token
+      });
+      return res.status(200).send();
+    } catch (error) {
+      // Mesmo se der erro (ex: usuário já deletado), retorna OK para o app seguir o logout
+      return res.status(200).send();
+    }
+  }
+
+  // --- CLIENTE ---
+
+  // Salvar Token
   async saveClientToken(req: Request, res: Response) {
-    // Lógica similar para a tabela 'app_clients' ou 'customers' se você tiver login de cliente
-    // Por enquanto, retorna 200 para não quebrar o app
-    return res.status(200).send();
+    const { token } = req.body;
+    // O middleware ensureMobileAuth coloca 'clientId' no req
+    const client_id = (req as any).clientId;
+
+    if (!token) return res.status(400).json({ error: "Token ausente" });
+
+    try {
+      await prisma.app_clients.update({
+        where: { id: client_id },
+        data: { push_token: token },
+      });
+      return res.status(200).send();
+    } catch (error) {
+      return res.status(500).json({ error: "Erro ao salvar token cliente" });
+    }
+  }
+
+  // Remover Token (Logout)
+  async removeClientToken(req: Request, res: Response) {
+    const client_id = (req as any).clientId;
+
+    try {
+      await prisma.app_clients.update({
+        where: { id: client_id },
+        data: { push_token: null }, // 🗑️ Limpa o token
+      });
+      return res.status(200).send();
+    } catch (error) {
+      return res.status(200).send();
+    }
   }
 }

@@ -3,7 +3,26 @@ import multer from "multer";
 import path from "path";
 import crypto from "crypto";
 
-// --- Configuração do Upload ---
+// Controllers
+import { DashboardController } from "../controllers/DashboardController";
+import { AuthController } from "../controllers/AuthController";
+import { MobileAuthController } from "../controllers/MobileAuthController";
+import { ServiceController } from "../controllers/ServiceController";
+import { ProfessionalController } from "../controllers/ProfessionalController";
+import { AvailabilityController } from "../controllers/AvailabilityController";
+import { AppointmentController } from "../controllers/AppointmentController";
+import { TenantController } from "../controllers/TenantController";
+import { NotificationController } from "../controllers/NotificationController";
+import { MobileFavoriteController } from "../controllers/MobileFavoriteController";
+
+// Middlewares
+import { ensureAuthenticated } from "../middlewares/ensureAuthenticated";
+import { ensureMobileAuth } from "../middlewares/ensureMobileAuth";
+import { prisma } from "../prisma/client";
+
+const router = Router();
+
+// Configuração Upload
 const uploadFolder = path.resolve(__dirname, "..", "..", "uploads");
 const upload = multer({
   storage: multer.diskStorage({
@@ -16,25 +35,7 @@ const upload = multer({
   }),
 });
 
-// Import Controllers
-import { DashboardController } from "../controllers/DashboardController";
-import { AuthController } from "../controllers/AuthController";
-import { MobileAuthController } from "../controllers/MobileAuthController";
-import { ServiceController } from "../controllers/ServiceController";
-import { ProfessionalController } from "../controllers/ProfessionalController";
-import { AvailabilityController } from "../controllers/AvailabilityController";
-import { AppointmentController } from "../controllers/AppointmentController";
-import { TenantController } from "../controllers/TenantController";
-import { NotificationController } from "../controllers/NotificationController";
-import { MobileFavoriteController } from "../controllers/MobileFavoriteController";
-
-import { ensureAuthenticated } from "../middlewares/ensureAuthenticated";
-import { ensureMobileAuth } from "../middlewares/ensureMobileAuth";
-import { prisma } from "../prisma/client";
-
-const router = Router();
-
-// Controllers Instanciados
+// Instâncias
 const dashboardController = new DashboardController();
 const authController = new AuthController();
 const serviceController = new ServiceController();
@@ -46,21 +47,15 @@ const mobileAuthController = new MobileAuthController();
 const notificationController = new NotificationController();
 const mobileFavoriteController = new MobileFavoriteController();
 
-// ==========================================================
-// 🔓 ROTAS PÚBLICAS
-// ==========================================================
+// === ROTAS PÚBLICAS ===
 router.post("/login", authController.handle);
 router.post("/tenants", tenantController.store);
 router.post("/mobile/register", mobileAuthController.register);
 router.post("/mobile/login", mobileAuthController.login);
 
-// 👇 ROTA DE UPLOAD DE FOTOS (Funda para o Perfil)
+// Upload
 router.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Nenhum arquivo enviado" });
-  }
-  // Retorna a URL completa para o App salvar no banco
-  // O App vai receber: http://192.168.x.x:3333/files/nome-da-foto.jpg
+  if (!req.file) return res.status(400).json({ error: "Arquivo inválido" });
   const fullUrl = `${req.protocol}://${req.get("host")}/files/${req.file.filename}`;
   return res.json({ url: fullUrl });
 });
@@ -82,14 +77,24 @@ router.get("/mobile/tenants/:id/details", async (req, res) => {
     return res.status(500).json({ error: "Erro" });
   }
 });
-
 router.get("/disponibilidade", availabilityController.handle);
 
-// ==========================================================
-// 📱 ROTAS PRIVADAS (Mobile)
-// ==========================================================
+// === ROTAS PRIVADAS MOBILE (CLIENTE) ===
+// Notificações Cliente
+router.post(
+  "/mobile/notifications/token",
+  ensureMobileAuth,
+  notificationController.saveClientToken,
+);
+router.delete(
+  "/mobile/notifications/token",
+  ensureMobileAuth,
+  notificationController.removeClientToken,
+); // 👈 NOVO
+
+// Perfil e Agendamentos
 router.get("/mobile/profile", ensureMobileAuth, mobileAuthController.me);
-router.put("/mobile/profile", ensureMobileAuth, mobileAuthController.update); // Salvar a URL da foto
+router.put("/mobile/profile", ensureMobileAuth, mobileAuthController.update);
 router.delete("/mobile/profile", ensureMobileAuth, mobileAuthController.delete);
 
 router.post("/mobile/appointments", ensureMobileAuth, (req, res) =>
@@ -116,38 +121,26 @@ router.post(
   ensureMobileAuth,
   mobileFavoriteController.toggle,
 );
-router.post(
-  "/mobile/notifications/token",
-  ensureMobileAuth,
-  notificationController.saveClientToken,
-);
 
-// ==========================================================
-// 🔒 ROTAS PRIVADAS (Web Admin)
-// ==========================================================
+// === ROTAS PRIVADAS WEB (BARBEIRO) ===
 router.use(ensureAuthenticated);
+
+// Notificações Barbeiro
 router.post("/notifications/token", notificationController.saveBarberToken);
+router.delete("/notifications/token", notificationController.removeBarberToken); // 👈 NOVO
+
 router.get("/dashboard/metrics", dashboardController.index);
 router.get("/tenants", tenantController.index);
 router.put("/tenants/profile", tenantController.update);
 
-router.patch("/users/push-token", async (req, res) => {
-  const { token } = req.body;
-  const user_id = req.user_id;
-  if (!token) return res.status(400).json({ error: "Token não enviado" });
-  await prisma.users.update({
-    where: { id: user_id },
-    data: { push_token: token },
-  });
-  return res.status(200).send();
-});
-
 router.post("/services", serviceController.create);
 router.get("/services", serviceController.list);
 router.delete("/services/:id", serviceController.delete);
+
 router.post("/professionals", professionalController.create);
 router.get("/professionals", professionalController.list);
 router.delete("/professionals/:id", professionalController.delete);
+
 router.get("/appointments", appointmentController.index);
 router.post("/appointments", appointmentController.store);
 router.patch("/appointments/:id", appointmentController.update);

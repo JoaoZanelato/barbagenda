@@ -1,46 +1,30 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "./API";
 
-export interface BarberLoginDTO {
-  email: string;
-  password: string;
+// Função para deslogar Barbeiro
+export async function signOutBarber() {
+  try {
+    // 1. Avisa o backend para remover o token deste usuário
+    await api.delete("/notifications/token");
+  } catch (error) {
+    console.log("Erro ao remover token no backend (ignorado)");
+  } finally {
+    // 2. Limpa dados locais
+    await AsyncStorage.removeItem("@barber:token");
+    await AsyncStorage.removeItem("@barber:user");
+  }
 }
 
-export interface ClientLoginDTO {
-  phone: string;
-  pin: string;
+// Função para deslogar Cliente
+export async function signOutClient() {
+  try {
+    // 1. Avisa o backend
+    await api.delete("/mobile/notifications/token");
+  } catch (error) {
+    console.log("Erro ao remover token cliente (ignorado)");
+  } finally {
+    // 2. Limpa dados locais
+    await AsyncStorage.removeItem("@client:token");
+    await AsyncStorage.removeItem("@client:user");
+  }
 }
-
-export interface ClientRegisterDTO {
-  name: string;
-  phone: string;
-  pin: string;
-}
-
-export const authService = {
-  /**
-   * Login do Barbeiro (Acesso ao Painel Administrativo)
-   * Rota: POST /login
-   */
-  loginBarber: async (data: BarberLoginDTO) => {
-    const response = await api.post("/login", data);
-    return response.data;
-  },
-
-  /**
-   * Login do Cliente (Acesso ao Agendamento)
-   * Rota: POST /mobile/login
-   */
-  loginClient: async (data: ClientLoginDTO) => {
-    const response = await api.post("/mobile/login", data);
-    return response.data;
-  },
-
-  /**
-   * Cadastro de Novo Cliente
-   * Rota: POST /mobile/register
-   */
-  registerClient: async (data: ClientRegisterDTO) => {
-    const response = await api.post("/mobile/register", data);
-    return response.data;
-  },
-};

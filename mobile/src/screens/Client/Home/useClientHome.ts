@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Alert } from "react-native";
-import api from "../../../services/API";
+import api from "../../../services/API"; // 👈 Importa a config com seu IP 192...
 
 export function useClientHome() {
   const [tenants, setTenants] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null); // Estado para guardar o usuário
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Controle do Modal
@@ -19,28 +19,57 @@ export function useClientHome() {
     loadData();
   }, []);
 
+  // 👇 FUNÇÃO MÁGICA: Corrige o link da imagem usando o IP do API.ts
+  const fixImageURL = (url: string) => {
+    if (!url) return null;
+
+    // Pega o IP configurado no services/API.ts (http://192.168.0.105:3333)
+    const baseURL = api.defaults.baseURL;
+
+    if (!baseURL) return url;
+
+    // Se a imagem vier do banco como localhost ou 127.0.0.1, troca pelo IP correto
+    if (url.includes("localhost") || url.includes("127.0.0.1")) {
+      return url.replace(/http:\/\/(localhost|127\.0\.0\.1):3333/g, baseURL);
+    }
+
+    return url;
+  };
+
   async function loadData() {
     try {
-      // setLoading(true); // Opcional, para não piscar sempre que entra
-
-      // Busca em paralelo: Perfil, Lojas e Favoritos
+      // Busca tudo junto
       const [userRes, tenantsRes, favoritesRes] = await Promise.all([
         api.get("/mobile/profile"),
         api.get("/mobile/tenants"),
         api.get("/mobile/favorites"),
       ]);
 
-      setUser(userRes.data);
-      setTenants(tenantsRes.data);
+      // 1. Corrige Foto do Perfil
+      let userData = userRes.data;
+      if (userData.avatar_url) {
+        userData.avatar_url = fixImageURL(userData.avatar_url);
+      }
+      setUser(userData);
+
+      // 2. Corrige Logos das Barbearias
+      const formattedTenants = tenantsRes.data.map((tenant: any) => ({
+        ...tenant,
+        logo_url: fixImageURL(tenant.logo_url), // 👈 Aplica a correção aqui
+      }));
+
+      setTenants(formattedTenants);
 
       const ids = favoritesRes.data.map((t: any) => t.id);
       setFavorites(ids);
     } catch (error) {
-      console.error("Erro ao carregar dados da home:", error);
+      console.error("Erro ao carregar Home:", error);
     } finally {
       setLoading(false);
     }
   }
+
+  // --- Funções de Ação (Favoritar, Modal) ---
 
   async function toggleFavorite(tenantId: string) {
     const previouslyFavorite = favorites.includes(tenantId);
@@ -56,7 +85,7 @@ export function useClientHome() {
     try {
       await api.post(`/mobile/favorites/${tenantId}/toggle`);
     } catch (error) {
-      setFavorites(favorites);
+      setFavorites(favorites); // Reverte visualmente se falhar
       Alert.alert("Erro", "Não foi possível atualizar o favorito.");
     }
   }
@@ -82,7 +111,7 @@ export function useClientHome() {
 
   return {
     tenants: displayedTenants,
-    user, // Retorna o usuário para a View
+    user,
     loading,
     selectedTenant,
     isModalOpen,

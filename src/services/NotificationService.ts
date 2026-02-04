@@ -1,4 +1,4 @@
-import { Expo } from "expo-server-sdk"; // Certifique-se de ter rodado: npm install expo-server-sdk
+import { Expo } from "expo-server-sdk";
 
 export class NotificationService {
   private expo: Expo;
@@ -7,7 +7,8 @@ export class NotificationService {
     this.expo = new Expo();
   }
 
-  async send(pushToken: string, title: string, body: string) {
+  // 👇 Agora aceita 'data' (opcional)
+  async send(pushToken: string, title: string, body: string, data?: any) {
     if (!Expo.isExpoPushToken(pushToken)) {
       console.error(`Push token inválido: ${pushToken}`);
       return;
@@ -17,14 +18,12 @@ export class NotificationService {
 
     messages.push({
       to: pushToken,
-      sound: "default", // iOS usa default ou nome do arquivo
+      sound: "default",
       title: title,
       body: body,
-      data: { url: "/agendamentos" },
-
-      // 👇 O SEGREDO: Tem que bater com o nome do canal no Mobile (V3)
+      // 👇 Envia os dados para o redirecionamento
+      data: data || {},
       channelId: "barber-sound-v3",
-
       priority: "high",
     });
 
@@ -34,7 +33,7 @@ export class NotificationService {
       for (const chunk of chunks) {
         try {
           await this.expo.sendPushNotificationsAsync(chunk);
-          console.log("🔔 Notificação enviada (Canal V3)!");
+          console.log("🔔 Notificação enviada:", title);
         } catch (error) {
           console.error("Erro no envio:", error);
         }

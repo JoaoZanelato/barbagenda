@@ -1,29 +1,32 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
+import { NotificationService } from "../services/NotificationService";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+const notificationService = new NotificationService();
 
 export class AppointmentController {
-  // 1. LISTAGEM (O que o Barbeiro vê no Painel)
+  // 1. LISTAGEM (Painel)
   async index(req: Request, res: Response) {
     const { start_time, end_time } = req.query;
-    const tenant_id = req.tenant_id; // Vem do token do barbeiro
+    const tenant_id = req.tenant_id;
+
+    // Filtro dinâmico de datas
+    const where: any = { tenant_id };
+    if (start_time && end_time) {
+      where.start_time = {
+        gte: new Date(String(start_time)),
+        lte: new Date(String(end_time)),
+      };
+    }
 
     try {
       const appointments = await prisma.appointments.findMany({
-        where: {
-          tenant_id,
-          start_time: {
-            gte: new Date(String(start_time)),
-            lte: new Date(String(end_time)),
-          },
-        },
+        where,
         include: {
           app_client: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              avatar_url: true,
-            },
+            select: { id: true, name: true, phone: true, avatar_url: true },
           },
           customers: true,
           services: true,
@@ -45,40 +48,33 @@ export class AppointmentController {
     }
   }
 
-  // 2. CRIAÇÃO PELO APP
+  // 2. CRIAÇÃO (App Cliente -> Avisa Barbeiro)
   async store(req: Request, res: Response) {
     const { professional_id, service_id, start_time } = req.body;
     const { authenticatedPhone } = req.body;
 
-    // Validação Obrigatória para evitar erro no Prisma
-    if (!professional_id) {
+    if (!professional_id)
       return res.status(400).json({ error: "Profissional não informado." });
-    }
 
     const appClient = await prisma.app_clients.findUnique({
       where: { phone: authenticatedPhone },
     });
-
-    if (!appClient) {
+    if (!appClient)
       return res.status(401).json({ error: "Cliente não autenticado." });
-    }
 
     const professional = await prisma.users.findUnique({
       where: { id: professional_id },
-      select: { tenant_id: true },
+      select: { tenant_id: true, push_token: true, name: true }, // Pega token
     });
 
-    if (!professional || !professional.tenant_id) {
+    if (!professional || !professional.tenant_id)
       return res.status(400).json({ error: "Profissional inválido." });
-    }
 
     const service = await prisma.services.findUnique({
       where: { id: service_id },
     });
-
-    if (!service) {
+    if (!service)
       return res.status(400).json({ error: "Serviço não encontrado." });
-    }
 
     const appointment = await prisma.appointments.create({
       data: {
@@ -94,13 +90,27 @@ export class AppointmentController {
       },
     });
 
+    // 👇 NOTIFICAÇÃO RICA PARA O BARBEIRO
+    if (professional.push_token) {
+      const dia = format(new Date(start_time), "dd 'de' MMMM", {
+        locale: ptBR,
+      });
+      const hora = format(new Date(start_time), "HH:mm");
+
+      await notificationService.send(
+        professional.push_token,
+        "✂️ Novo Agendamento!",
+        `${appClient.name} marcou ${service.name}\n📅 ${dia} às ${hora}`,
+        { screen: "BarberAgenda" }, // Redireciona para Agenda
+      );
+    }
+
     return res.status(201).json(appointment);
   }
 
   // 3. MEUS AGENDAMENTOS
   async listMobile(req: Request, res: Response) {
     const { authenticatedPhone } = req.body;
-
     const appClient = await prisma.app_clients.findUnique({
       where: { phone: authenticatedPhone },
     });
@@ -129,7 +139,7 @@ export class AppointmentController {
     return res.json(myAppointments);
   }
 
-  // 4. CANCELAR
+  // 4. CANCELAR (App Cliente -> Avisa Barbeiro)
   async cancelMobile(req: Request, res: Response) {
     const { id } = req.params;
     const { authenticatedPhone } = req.body;
@@ -139,7 +149,10 @@ export class AppointmentController {
     });
     if (!appClient) return res.status(401).json({ error: "Não autorizado" });
 
-    const appointment = await prisma.appointments.findUnique({ where: { id } });
+    const appointment = await prisma.appointments.findUnique({
+      where: { id },
+      include: { users: true }, // Inclui dados do barbeiro
+    });
 
     if (!appointment || appointment.app_client_id !== appClient.id) {
       return res.status(404).json({ error: "Agendamento não encontrado." });
@@ -150,18 +163,51 @@ export class AppointmentController {
       data: { status: "cancelled" },
     });
 
+    // 👇 AVISA O BARBEIRO
+    if (appointment.users?.push_token) {
+      const hora = format(new Date(appointment.start_time), "HH:mm");
+      await notificationService.send(
+        appointment.users.push_token,
+        "❌ Agendamento Cancelado",
+        `O cliente ${appClient.name} cancelou o horário das ${hora}.`,
+        { screen: "BarberAgenda" },
+      );
+    }
+
     return res.status(200).send();
   }
 
-  // 5. UPDATE
+  // 5. ATUALIZAR STATUS (Barbeiro -> Avisa Cliente)
   async update(req: Request, res: Response) {
     const { id } = req.params;
     const { status } = req.body;
 
-    await prisma.appointments.update({
+    const appointment = await prisma.appointments.update({
       where: { id },
       data: { status },
+      include: { app_client: true, services: true },
     });
+
+    // 👇 AVISA O CLIENTE
+    if (appointment.app_client?.push_token) {
+      let title = "Atualização do Agendamento";
+      let body = `Seu status mudou para ${status}.`;
+
+      if (status === "COMPLETED") {
+        title = "✅ Visual Novo!";
+        body = `Seu corte de ${appointment.services?.name} foi concluído. O que achou?`;
+      } else if (status === "CANCELLED") {
+        title = "🚫 Agendamento Cancelado";
+        body = "O barbeiro precisou cancelar seu horário. Toque para remarcar.";
+      }
+
+      await notificationService.send(
+        appointment.app_client.push_token,
+        title,
+        body,
+        { screen: "ClientAppointments" }, // Redireciona para Histórico
+      );
+    }
 
     return res.status(200).send();
   }
