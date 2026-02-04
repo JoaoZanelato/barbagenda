@@ -21,7 +21,12 @@
         "backgroundColor": "#00000000"
       },
       "package": "com.barbagenda.app",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAt0gb71rn9LD0T5wzREcbQfLOvJ1PnWc4"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png"

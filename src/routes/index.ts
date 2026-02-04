@@ -3,7 +3,6 @@ import multer from "multer";
 import path from "path";
 import crypto from "crypto";
 
-// Controllers
 import { DashboardController } from "../controllers/DashboardController";
 import { AuthController } from "../controllers/AuthController";
 import { MobileAuthController } from "../controllers/MobileAuthController";
@@ -14,15 +13,14 @@ import { AppointmentController } from "../controllers/AppointmentController";
 import { TenantController } from "../controllers/TenantController";
 import { NotificationController } from "../controllers/NotificationController";
 import { MobileFavoriteController } from "../controllers/MobileFavoriteController";
+import { ReviewController } from "../controllers/ReviewController"; // 👈 Importe
 
-// Middlewares
 import { ensureAuthenticated } from "../middlewares/ensureAuthenticated";
 import { ensureMobileAuth } from "../middlewares/ensureMobileAuth";
 import { prisma } from "../prisma/client";
 
 const router = Router();
 
-// Upload Config
 const uploadFolder = path.resolve(__dirname, "..", "..", "uploads");
 const upload = multer({
   storage: multer.diskStorage({
@@ -45,6 +43,7 @@ const tenantController = new TenantController();
 const mobileAuthController = new MobileAuthController();
 const notificationController = new NotificationController();
 const mobileFavoriteController = new MobileFavoriteController();
+const reviewController = new ReviewController(); // 👈 Instância
 
 // === ROTAS PÚBLICAS ===
 router.post("/login", authController.handle);
@@ -52,14 +51,12 @@ router.post("/tenants", tenantController.store);
 router.post("/mobile/register", mobileAuthController.register);
 router.post("/mobile/login", mobileAuthController.login);
 
-// Upload Genérico
 router.post("/upload", upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "Arquivo inválido" });
   const fullUrl = `${req.protocol}://${req.get("host")}/files/${req.file.filename}`;
   return res.json({ url: fullUrl });
 });
 
-// Listagem Pública Mobile
 router.get("/mobile/tenants", tenantController.index);
 router.get("/mobile/tenants/:id/details", async (req, res) => {
   const { id } = req.params;
@@ -80,7 +77,6 @@ router.get("/mobile/tenants/:id/details", async (req, res) => {
 router.get("/disponibilidade", availabilityController.handle);
 
 // === ROTAS PRIVADAS MOBILE (CLIENTE) ===
-// Notificações
 router.post(
   "/mobile/notifications/token",
   ensureMobileAuth,
@@ -90,14 +86,12 @@ router.delete(
   "/mobile/notifications/token",
   ensureMobileAuth,
   notificationController.removeClientToken,
-); // 👈
+);
 
-// Perfil
 router.get("/mobile/profile", ensureMobileAuth, mobileAuthController.me);
 router.put("/mobile/profile", ensureMobileAuth, mobileAuthController.update);
 router.delete("/mobile/profile", ensureMobileAuth, mobileAuthController.delete);
 
-// Agendamentos
 router.post("/mobile/appointments", ensureMobileAuth, (req, res) =>
   appointmentController.store(req, res),
 );
@@ -112,7 +106,6 @@ router.patch(
   appointmentController.cancelMobile,
 );
 
-// Favoritos
 router.get(
   "/mobile/favorites",
   ensureMobileAuth,
@@ -124,12 +117,19 @@ router.post(
   mobileFavoriteController.toggle,
 );
 
-// === ROTAS PRIVADAS WEB/ADMIN (BARBEIRO) ===
+// 👇 NOVAS ROTAS DE AVALIAÇÃO
+router.post("/mobile/reviews", ensureMobileAuth, reviewController.store);
+router.get(
+  "/mobile/reviews/:tenant_id",
+  ensureMobileAuth,
+  reviewController.list,
+);
+
+// === ROTAS PRIVADAS WEB (BARBEIRO) ===
 router.use(ensureAuthenticated);
 
-// Notificações
 router.post("/notifications/token", notificationController.saveBarberToken);
-router.delete("/notifications/token", notificationController.removeBarberToken); // 👈
+router.delete("/notifications/token", notificationController.removeBarberToken);
 
 router.get("/dashboard/metrics", dashboardController.index);
 router.get("/tenants", tenantController.index);

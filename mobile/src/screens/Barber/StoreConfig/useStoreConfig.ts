@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Alert, Platform } from "react-native"; // 👈 Importante: Platform
+import { Alert, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location"; // 👈 Importe
 import api from "../../../services/API";
 
 export function useStoreConfig() {
@@ -12,18 +13,18 @@ export function useStoreConfig() {
     address_num: "",
     neighborhood: "",
     logo_url: "",
+    latitude: null as number | null, // 👈 Novos campos
+    longitude: null as number | null,
   });
 
   useEffect(() => {
     loadData();
   }, []);
 
-  // 👇 Função para corrigir URLs antigas (localhost -> IP real)
   const fixImageURL = (url: string) => {
     if (!url) return "";
-    const baseURL = api.defaults.baseURL; // Pega o IP configurado (http://192...)
+    const baseURL = api.defaults.baseURL;
     if (!baseURL) return url;
-
     if (url.includes("localhost") || url.includes("127.0.0.1")) {
       return url.replace(/http:\/\/(localhost|127\.0\.0\.1):3333/g, baseURL);
     }
@@ -35,7 +36,6 @@ export function useStoreConfig() {
       const response = await api.get("/tenants");
       if (response.data.length > 0) {
         const tenant = response.data[0];
-        // Aplica a correção na logo ao carregar
         setData({
           ...tenant,
           logo_url: fixImageURL(tenant.logo_url),
@@ -46,63 +46,70 @@ export function useStoreConfig() {
     }
   }
 
+  // 👇 NOVA FUNÇÃO: Pegar GPS
+  async function handleGetLocation() {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Erro",
+        "Precisamos de permissão para pegar sua localização.",
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const location = await Location.getCurrentPositionAsync({});
+      setData((prev) => ({
+        ...prev,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      }));
+      Alert.alert("Sucesso", "Localização GPS capturada!");
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível obter localização.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handlePickImage() {
-    // 1. Permissões
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permissão necessária", "Precisamos de acesso às fotos.");
       return;
     }
 
-    // 2. Seleção (Sintaxe Nova)
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"], // 👈 Correção do botão travado
+      mediaTypes: ["images"],
       allowsEditing: true,
       quality: 0.7,
     });
 
     if (!result.canceled && result.assets[0]) {
       const selectedImage = result.assets[0];
-
-      // 3. Montagem do Arquivo (Correção do Network Error)
       const formData = new FormData();
 
       const uri =
         Platform.OS === "ios"
           ? selectedImage.uri.replace("file://", "")
           : selectedImage.uri;
-
       const filename = uri.split("/").pop() || "logo.jpg";
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-      formData.append("file", {
-        uri,
-        name: filename,
-        type,
-      } as any);
+      formData.append("file", { uri, name: filename, type } as any);
 
       try {
         setLoading(true);
-        console.log("Enviando logo...");
-
         const response = await api.post("/upload", formData, {
           headers: { "Content-Type": "multipart/form-data" },
-          timeout: 20000,
         });
-
         const uploadedUrl = response.data.url;
-
-        // Atualiza estado com a URL (já corrigida para exibir na hora)
-        setData((prev) => ({
-          ...prev,
-          logo_url: fixImageURL(uploadedUrl),
-        }));
-
+        setData((prev) => ({ ...prev, logo_url: fixImageURL(uploadedUrl) }));
         Alert.alert("Sucesso", "Logo enviada!");
       } catch (error) {
-        console.error("Erro upload:", error);
-        Alert.alert("Erro", "Falha ao enviar imagem. Verifique a rede.");
+        Alert.alert("Erro", "Falha ao enviar imagem.");
       } finally {
         setLoading(false);
       }
@@ -113,9 +120,9 @@ export function useStoreConfig() {
     setLoading(true);
     try {
       await api.put("/tenants/profile", data);
-      Alert.alert("Sucesso", "Dados da barbearia atualizados!");
+      Alert.alert("Sucesso", "Dados atualizados!");
     } catch (error) {
-      Alert.alert("Erro", "Não foi possível salvar as alterações.");
+      Alert.alert("Erro", "Não foi possível salvar.");
     } finally {
       setLoading(false);
     }
@@ -127,5 +134,6 @@ export function useStoreConfig() {
     loading,
     handlePickImage,
     handleSave,
+    handleGetLocation, // 👈 Exporte
   };
 }

@@ -11,17 +11,22 @@ import { useStoreConfig } from "./useStoreConfig";
 import { styles } from "./styles";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
-import { signOutBarber } from "../../../services/authService"; // 👈
+import { signOutBarber } from "../../../services/authService";
 
 interface Props {
   onLogout: () => void;
 }
 
 export function StoreConfig({ onLogout }: Props) {
-  const { data, setData, loading, handlePickImage, handleSave } =
-    useStoreConfig();
+  const {
+    data,
+    setData,
+    loading,
+    handlePickImage,
+    handleSave,
+    handleGetLocation,
+  } = useStoreConfig();
 
-  // 👇 Logout Seguro
   const handleBarberLogout = async () => {
     await signOutBarber();
     onLogout();
@@ -81,7 +86,27 @@ export function StoreConfig({ onLogout }: Props) {
           </View>
         </View>
 
-        <View style={{ marginTop: 24 }}>
+        {/* 👇 Botão de GPS */}
+        <View style={{ marginTop: 12, marginBottom: 12 }}>
+          <Button
+            title="📍 Pegar Localização Atual (GPS)"
+            onPress={handleGetLocation}
+          />
+          {data.latitude && (
+            <Text
+              style={{
+                color: "#22C55E",
+                fontSize: 12,
+                marginTop: 4,
+                textAlign: "center",
+              }}
+            >
+              Localização GPS Salva ✓
+            </Text>
+          )}
+        </View>
+
+        <View style={{ marginTop: 12 }}>
           {loading ? (
             <ActivityIndicator color="#FF231F7C" />
           ) : (
