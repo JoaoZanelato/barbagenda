@@ -11,7 +11,7 @@ import { useStoreConfig } from "./useStoreConfig";
 import { styles } from "./styles";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
-import { signOutBarber } from "../../../services/authService"; // 👈 Importe isso
+import { signOutBarber } from "../../../services/authService"; // 👈
 
 interface Props {
   onLogout: () => void;
@@ -21,7 +21,7 @@ export function StoreConfig({ onLogout }: Props) {
   const { data, setData, loading, handlePickImage, handleSave } =
     useStoreConfig();
 
-  // 👇 Função de Logout do Barbeiro
+  // 👇 Logout Seguro
   const handleBarberLogout = async () => {
     await signOutBarber();
     onLogout();
@@ -34,7 +34,6 @@ export function StoreConfig({ onLogout }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Logo Upload */}
         <View style={styles.logoContainer}>
           <TouchableOpacity onPress={handlePickImage} style={styles.logoButton}>
             {data.logo_url ? (
@@ -49,18 +48,16 @@ export function StoreConfig({ onLogout }: Props) {
         </View>
 
         <Input
-          placeholder="Nome da Barbearia"
+          placeholder="Nome"
           value={data.name}
           onChangeText={(t) => setData({ ...data, name: t })}
         />
-
         <Input
           placeholder="Telefone"
           value={data.phone}
           onChangeText={(t) => setData({ ...data, phone: t })}
           keyboardType="phone-pad"
         />
-
         <Input
           placeholder="Endereço"
           value={data.address}
@@ -70,7 +67,7 @@ export function StoreConfig({ onLogout }: Props) {
         <View style={styles.row}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Input
-              placeholder="Número"
+              placeholder="Nº"
               value={data.address_num}
               onChangeText={(t) => setData({ ...data, address_num: t })}
             />
@@ -92,7 +89,6 @@ export function StoreConfig({ onLogout }: Props) {
           )}
         </View>
 
-        {/* Botão de Logout */}
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleBarberLogout}
@@ -100,7 +96,6 @@ export function StoreConfig({ onLogout }: Props) {
           <Text style={styles.logoutText}>Sair da Conta</Text>
         </TouchableOpacity>
 
-        {/* Espaço extra no final */}
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>

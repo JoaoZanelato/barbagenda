@@ -4,7 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import api from "../../../services/API";
-import { signOutClient } from "../../../services/authService"; // 👈 Importe isso
+import { signOutClient } from "../../../services/authService"; // 👈
 
 export function useProfile(onLogout: () => void) {
   const [image, setImage] = useState<string | null>(null);
@@ -20,11 +20,7 @@ export function useProfile(onLogout: () => void) {
     try {
       const response = await api.get("/mobile/profile");
       setUserName(response.data.name);
-
-      if (response.data.avatar_url) {
-        setImage(response.data.avatar_url);
-      }
-
+      if (response.data.avatar_url) setImage(response.data.avatar_url);
       if (response.data.created_at) {
         const date = new Date(response.data.created_at);
         setMemberSince(format(date, "MMMM 'de' yyyy", { locale: ptBR }));
@@ -39,7 +35,7 @@ export function useProfile(onLogout: () => void) {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permissão", "Precisamos de acesso às fotos.");
+      Alert.alert("Permissão", "Acesso às fotos necessário.");
       return;
     }
 
@@ -80,12 +76,12 @@ export function useProfile(onLogout: () => void) {
     }
   };
 
-  // 👇 Nova função de Logout
+  // 👇 Logout Seguro
   const handleLogout = async () => {
     setLoading(true);
-    await signOutClient(); // Remove token no back e limpa storage
+    await signOutClient();
     setLoading(false);
-    onLogout(); // Atualiza a tela
+    onLogout();
   };
 
   const handleDeleteAccount = () => {
@@ -97,9 +93,9 @@ export function useProfile(onLogout: () => void) {
         onPress: async () => {
           try {
             await api.delete("/mobile/profile");
-            handleLogout(); // Usa a mesma lógica de logout
+            handleLogout();
           } catch (error) {
-            Alert.alert("Erro", "Não foi possível excluir.");
+            Alert.alert("Erro", "Falha ao excluir.");
           }
         },
       },
@@ -112,7 +108,7 @@ export function useProfile(onLogout: () => void) {
     memberSince,
     loading,
     pickImage,
-    handleLogout, // 👈 Use esta no botão
+    handleLogout,
     handleDeleteAccount,
   };
 }

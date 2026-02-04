@@ -1,135 +1,134 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
-import { hash, compare } from "bcryptjs";
+import { compare, hash } from "bcryptjs";
 import { sign } from "jsonwebtoken";
+import { deleteFile } from "../utils/file"; // 👈 Importe o utilitário
 
 export class MobileAuthController {
+  // 1. REGISTER
   async register(req: Request, res: Response) {
-    const { name, phone, pin } = req.body;
+    const { name, email, password, phone } = req.body;
 
-    if (!name || !phone || !pin) {
-      return res.status(400).json({ error: "Preencha todos os campos." });
+    if (!email || !password || !phone) {
+      return res.status(400).json({ error: "Preencha todos os campos" });
     }
 
-    if (String(pin).length !== 4) {
-      return res.status(400).json({ error: "O PIN deve ter 4 dígitos." });
+    const userExists = await prisma.app_clients.findFirst({
+      where: { OR: [{ email }, { phone }] },
+    });
+
+    if (userExists) {
+      return res
+        .status(400)
+        .json({ error: "E-mail ou telefone já cadastrado" });
     }
 
-    try {
-      const userExists = await prisma.app_clients.findUnique({
-        where: { phone },
-      });
-      if (userExists) {
-        return res.status(400).json({ error: "Telefone já cadastrado." });
-      }
+    const passwordHash = await hash(password, 8);
 
-      const pinHash = await hash(String(pin), 8);
+    const client = await prisma.app_clients.create({
+      data: {
+        name,
+        email,
+        phone,
+        password: passwordHash,
+      },
+    });
 
-      const user = await prisma.app_clients.create({
-        data: { name, phone, pin_hash: pinHash },
-      });
-
-      const token = sign(
-        { phone: user.phone, clientId: user.id },
-        process.env.JWT_SECRET as string,
-        { expiresIn: "30d" },
-      );
-
-      return res.status(201).json({
-        message: "Conta criada!",
-        token,
-        user: { id: user.id, name: user.name, phone: user.phone },
-      });
-    } catch (error) {
-      return res.status(500).json({ error: "Erro ao criar conta." });
-    }
+    return res.json(client);
   }
 
+  // 2. LOGIN
   async login(req: Request, res: Response) {
-    const { phone, pin } = req.body;
+    const { email, password } = req.body;
 
-    try {
-      const user = await prisma.app_clients.findUnique({ where: { phone } });
+    const client = await prisma.app_clients.findUnique({
+      where: { email },
+    });
 
-      if (!user) {
-        return res.status(400).json({ error: "Telefone não cadastrado." });
-      }
-
-      const pinMatch = await compare(String(pin), user.pin_hash);
-
-      if (!pinMatch) {
-        return res.status(400).json({ error: "PIN incorreto." });
-      }
-
-      const token = sign(
-        { phone: user.phone, clientId: user.id },
-        process.env.JWT_SECRET as string,
-        { expiresIn: "30d" },
-      );
-
-      return res.json({
-        token,
-        user: { id: user.id, name: user.name, phone: user.phone },
-      });
-    } catch (error) {
-      return res.status(500).json({ error: "Erro interno no servidor." });
+    if (!client) {
+      return res.status(400).json({ error: "E-mail ou senha incorretos" });
     }
+
+    const passwordMatch = await compare(password, client.password);
+
+    if (!passwordMatch) {
+      return res.status(400).json({ error: "E-mail ou senha incorretos" });
+    }
+
+    const token = sign(
+      { clientId: client.id, email: client.email },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "30d" },
+    );
+
+    return res.json({
+      id: client.id,
+      name: client.name,
+      email: client.email,
+      token,
+    });
   }
 
-  // 3. OBTER PERFIL (ME) - COM AVATAR
+  // 3. ME (Perfil)
   async me(req: Request, res: Response) {
-    const { authenticatedPhone } = req.body;
-
-    try {
-      const user = await prisma.app_clients.findUnique({
-        where: { phone: authenticatedPhone },
-        select: {
-          id: true,
-          name: true,
-          phone: true,
-          created_at: true,
-          avatar_url: true, // 👈 Importante
-        },
-      });
-
-      if (!user)
-        return res.status(404).json({ error: "Usuário não encontrado." });
-
-      return res.json(user);
-    } catch (error) {
-      return res.status(500).json({ error: "Erro ao buscar perfil." });
-    }
+    const client_id = (req as any).clientId;
+    const client = await prisma.app_clients.findUnique({
+      where: { id: client_id },
+    });
+    return res.json(client);
   }
 
-  // 4. ATUALIZAR PERFIL (Novo)
+  // 4. UPDATE (Com delete de imagem antiga)
   async update(req: Request, res: Response) {
-    const { authenticatedPhone } = req.body;
-    const { name, avatar_url } = req.body;
+    const { name, email, phone, avatar_url } = req.body;
+    const client_id = (req as any).clientId;
 
     try {
-      const user = await prisma.app_clients.update({
-        where: { phone: authenticatedPhone },
-        data: { name, avatar_url },
+      // Busca usuário atual
+      const currentUser = await prisma.app_clients.findUnique({
+        where: { id: client_id },
       });
 
-      return res.json(user);
+      // Se mudou a foto, deleta a antiga
+      if (
+        currentUser?.avatar_url &&
+        avatar_url &&
+        currentUser.avatar_url !== avatar_url
+      ) {
+        await deleteFile(currentUser.avatar_url);
+      }
+
+      const client = await prisma.app_clients.update({
+        where: { id: client_id },
+        data: { name, email, phone, avatar_url },
+      });
+
+      return res.json(client);
     } catch (error) {
-      return res.status(400).json({ error: "Erro ao atualizar perfil." });
+      return res.status(400).json({ error: "Erro ao atualizar perfil" });
     }
   }
 
-  // 5. EXCLUIR
+  // 5. DELETE (Deleta conta e imagem)
   async delete(req: Request, res: Response) {
-    const { authenticatedPhone } = req.body;
+    const client_id = (req as any).clientId;
+
     try {
-      const user = await prisma.app_clients.findUnique({
-        where: { phone: authenticatedPhone },
+      const client = await prisma.app_clients.findUnique({
+        where: { id: client_id },
       });
-      if (!user) return res.status(404).json({ error: "User not found" });
-      await prisma.app_clients.delete({ where: { id: user.id } });
-      return res.json({ message: "Conta excluída." });
+
+      if (client?.avatar_url) {
+        await deleteFile(client.avatar_url);
+      }
+
+      await prisma.app_clients.delete({
+        where: { id: client_id },
+      });
+
+      return res.status(200).send();
     } catch (error) {
-      return res.status(500).json({ error: "Erro ao excluir." });
+      return res.status(400).json({ error: "Erro ao deletar conta" });
     }
   }
 }
