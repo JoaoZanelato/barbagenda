@@ -2,56 +2,38 @@ import { StyleSheet } from "react-native";
 import { colors } from "../../../theme/colors";
 
 export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#09090B",
-  },
+  container: { flex: 1, backgroundColor: "#09090B" },
 
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#09090B",
-  },
-
-  map: {
-    width: "100%",
-    height: "100%",
-  },
-
-  // === MARCADOR PERSONALIZADO (PINO) ===
-  markerContainer: {
+  // ZONA DE SEGURANÇA
+  // O padding: 10 cria uma área transparente em volta.
+  // O minWidth/Height força o Android a reservar espaço antes mesmo da imagem chegar.
+  markerSafeZone: {
+    padding: 10,
     alignItems: "center",
     justifyContent: "center",
-    width: 60, // Área de toque maior
+    minWidth: 80, // Força bruta de tamanho
+    minHeight: 80, // Força bruta de tamanho
+  },
+
+  // A Bolha Visível
+  profileBubble: {
+    width: 60,
     height: 60,
-  },
-
-  markerImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22, // Totalmente redonda
-    borderWidth: 2,
-    borderColor: colors.primary, // Borda Dourada
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: colors.primary,
     backgroundColor: "#18181B",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  markerArrow: {
-    width: 0,
-    height: 0,
-    backgroundColor: "transparent",
-    borderStyle: "solid",
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderBottomWidth: 8,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: colors.primary,
-    transform: [{ rotate: "180deg" }], // Inverte para apontar pra baixo
-    marginTop: -2, // Cola na bolinha
+  // A Imagem
+  profileImage: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
   },
 
-  // === BOTÃO GPS ===
   gpsButton: {
     position: "absolute",
     bottom: 30,
@@ -62,12 +44,8 @@ export const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
     borderWidth: 1,
     borderColor: "#3F3F46",
+    elevation: 5,
   },
 });
