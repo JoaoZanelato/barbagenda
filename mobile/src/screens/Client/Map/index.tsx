@@ -18,42 +18,37 @@ function TenantMarker({
   tenant: any;
   onPress: () => void;
 }) {
-  // Começa true (desenhando constantemente)
-  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+  // Estado para controlar o "Renascimento"
+  const [loaded, setLoaded] = useState(false);
 
   const imageUrl =
     tenant.logo_url && tenant.logo_url.length > 10
       ? tenant.logo_url
       : `https://ui-avatars.com/api/?background=D4AF37&color=fff&bold=true&name=${encodeURIComponent(tenant.name)}`;
 
-  const handleLoadEnd = () => {
-    // A imagem carregou.
-    // AGORA TEMOS QUE ESPERAR O ANDROID DESENHAR O PADDING TRANSPARENTE.
-
-    // Esperamos 2 segundos. É muito tempo? Sim.
-    // Mas é o único jeito de garantir que ele não corte antes da hora.
-    setTimeout(() => {
-      setTracksViewChanges(false);
-    }, 2000);
-  };
-
   return (
     <Marker
+      // 👇 O PULO DO GATO:
+      // Mudando a key, forçamos o React a recriar o componente do zero.
+      // Isso corrige o bug visual do Android que congela o layout errado.
+      key={`${tenant.id}-${loaded ? "loaded" : "loading"}`}
       coordinate={{
         latitude: Number(tenant.latitude),
         longitude: Number(tenant.longitude),
       }}
       onPress={onPress}
-      tracksViewChanges={tracksViewChanges}
-      anchor={{ x: 0.5, y: 0.5 }} // Centro exato
+      // Deixamos true para garantir que ele desenhe cada frame
+      tracksViewChanges={true}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <View style={styles.markerSafeZone}>
         <View style={styles.profileBubble}>
           <Image
             source={{ uri: imageUrl }}
             style={styles.profileImage}
-            onLoadEnd={handleLoadEnd}
-            fadeDuration={0} // Sem fade = Sem pixels transparentes misturados
+            // Quando carregar, avisa para trocar a key e renascer
+            onLoadEnd={() => setLoaded(true)}
+            fadeDuration={0}
           />
         </View>
       </View>
@@ -61,7 +56,7 @@ function TenantMarker({
   );
 }
 
-// === TELA PRINCIPAL ===
+// === TELA PRINCIPAL (Sem alterações) ===
 export function ClientMap() {
   const { mapRef, location, loading, visibleTenants, handleCenterMap } =
     useClientMap();

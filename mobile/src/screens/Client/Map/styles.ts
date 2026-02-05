@@ -4,34 +4,35 @@ import { colors } from "../../../theme/colors";
 export const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#09090B" },
 
-  // ZONA DE SEGURANÇA
-  // O padding: 10 cria uma área transparente em volta.
-  // O minWidth/Height força o Android a reservar espaço antes mesmo da imagem chegar.
+  // === ZONA DE SEGURANÇA ===
+  // O padding cria uma borda transparente.
+  // O minWidth força o Android a reservar espaço mesmo se a imagem demorar.
   markerSafeZone: {
     padding: 10,
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 80, // Força bruta de tamanho
-    minHeight: 80, // Força bruta de tamanho
+    minWidth: 90, // Tamanho bruto
+    minHeight: 90, // Tamanho bruto
   },
 
-  // A Bolha Visível
+  // A Bolha (Imagem + Borda)
   profileBubble: {
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: 30, // Redondo perfeito
     borderWidth: 3,
     borderColor: colors.primary,
     backgroundColor: "#18181B",
     alignItems: "center",
     justifyContent: "center",
+    // IMPORTANTE: Sem overflow: hidden para não bugar o Android
   },
 
   // A Imagem
   profileImage: {
     width: 54,
     height: 54,
-    borderRadius: 27,
+    borderRadius: 27, // A imagem se arredonda sozinha
   },
 
   gpsButton: {
