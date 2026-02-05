@@ -6,18 +6,21 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from "react-native";
+import { Camera, MapPin, Store } from "lucide-react-native";
 import { useStoreConfig } from "./useStoreConfig";
 import { styles } from "./styles";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
 import { signOutBarber } from "../../../services/authService";
+import { useAuth } from "../../../context/AuthContext";
+import { colors } from "../../../theme/colors";
 
-interface Props {
-  onLogout: () => void;
-}
-
-export function StoreConfig({ onLogout }: Props) {
+export function StoreConfig() {
+  const { signOut } = useAuth();
   const {
     data,
     setData,
@@ -27,102 +30,147 @@ export function StoreConfig({ onLogout }: Props) {
     handleGetLocation,
   } = useStoreConfig();
 
-  const handleBarberLogout = async () => {
-    await signOutBarber();
-    onLogout();
+  const handleBarberLogout = () => {
+    Alert.alert("Sair da Conta", "Tem certeza que deseja desconectar?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Sair",
+        style: "destructive",
+        onPress: async () => {
+          // 👇 MUDANÇA: "Fire and Forget"
+          // Dispara a limpeza do token mas NÃO espera (await) ela terminar.
+          // Se der erro, ninguém liga, o importante é o usuário sair.
+          signOutBarber().catch(() => {});
+
+          // Sai do app imediatamente
+          await signOut();
+        },
+      },
+    ]);
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Configuração da Loja</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.logoContainer}>
-          <TouchableOpacity onPress={handlePickImage} style={styles.logoButton}>
-            {data.logo_url ? (
-              <Image source={{ uri: data.logo_url }} style={styles.logo} />
-            ) : (
-              <View style={styles.placeholderLogo}>
-                <Text style={styles.placeholderText}>+ Logo</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <Text style={styles.hint}>Toque para alterar a logo</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Minha Loja</Text>
         </View>
 
-        <Input
-          placeholder="Nome"
-          value={data.name}
-          onChangeText={(t) => setData({ ...data, name: t })}
-        />
-        <Input
-          placeholder="Telefone"
-          value={data.phone}
-          onChangeText={(t) => setData({ ...data, phone: t })}
-          keyboardType="phone-pad"
-        />
-        <Input
-          placeholder="Endereço"
-          value={data.address}
-          onChangeText={(t) => setData({ ...data, address: t })}
-        />
-
-        <View style={styles.row}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Input
-              placeholder="Nº"
-              value={data.address_num}
-              onChangeText={(t) => setData({ ...data, address_num: t })}
-            />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Input
-              placeholder="Bairro"
-              value={data.neighborhood}
-              onChangeText={(t) => setData({ ...data, neighborhood: t })}
-            />
-          </View>
-        </View>
-
-        {/* 👇 Botão de GPS */}
-        <View style={{ marginTop: 12, marginBottom: 12 }}>
-          <Button
-            title="📍 Pegar Localização Atual (GPS)"
-            onPress={handleGetLocation}
-          />
-          {data.latitude && (
-            <Text
-              style={{
-                color: "#22C55E",
-                fontSize: 12,
-                marginTop: 4,
-                textAlign: "center",
-              }}
-            >
-              Localização GPS Salva ✓
-            </Text>
-          )}
-        </View>
-
-        <View style={{ marginTop: 12 }}>
-          {loading ? (
-            <ActivityIndicator color="#FF231F7C" />
-          ) : (
-            <Button title="Salvar Alterações" onPress={handleSave} />
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleBarberLogout}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.logoutText}>Sair da Conta</Text>
-        </TouchableOpacity>
+          {/* Área da Logo */}
+          <View style={styles.logoSection}>
+            <TouchableOpacity
+              onPress={handlePickImage}
+              style={styles.logoButton}
+            >
+              {data.logo_url ? (
+                <Image
+                  source={{ uri: data.logo_url }}
+                  style={styles.logoImage}
+                />
+              ) : (
+                <View style={styles.placeholderLogo}>
+                  <Store size={40} color={colors.primary} strokeWidth={1.5} />
+                  <Text style={styles.logoText}>Logo da Loja</Text>
+                </View>
+              )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </View>
+              <View style={styles.editBadge}>
+                <Camera size={14} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Formulário */}
+          <View style={styles.formGroup}>
+            <Text style={styles.sectionLabel}>DADOS GERAIS</Text>
+            <Input
+              placeholder="Nome da Barbearia"
+              value={data.name}
+              onChangeText={(t) => setData({ ...data, name: t })}
+            />
+            <Input
+              placeholder="Telefone / WhatsApp"
+              value={data.phone}
+              onChangeText={(t) => setData({ ...data, phone: t })}
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.sectionLabel}>ENDEREÇO</Text>
+            <Input
+              placeholder="Rua / Avenida"
+              value={data.address}
+              onChangeText={(t) => setData({ ...data, address: t })}
+            />
+
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Input
+                  placeholder="Número"
+                  value={data.address_num}
+                  onChangeText={(t) => setData({ ...data, address_num: t })}
+                />
+              </View>
+              <View style={{ width: 10 }} />
+              <View style={{ flex: 2 }}>
+                <Input
+                  placeholder="Bairro"
+                  value={data.neighborhood}
+                  onChangeText={(t) => setData({ ...data, neighborhood: t })}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.gpsButton,
+                data.latitude ? styles.gpsButtonActive : {},
+              ]}
+              onPress={handleGetLocation}
+            >
+              <MapPin
+                size={20}
+                color={data.latitude ? "#10B981" : colors.primary}
+              />
+              <Text
+                style={[
+                  styles.gpsText,
+                  data.latitude ? { color: "#10B981" } : {},
+                ]}
+              >
+                {data.latitude
+                  ? "Localização Atualizada ✓"
+                  : "Atualizar Localização GPS"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.footer}>
+            {loading ? (
+              <ActivityIndicator color={colors.primary} size="large" />
+            ) : (
+              <Button title="Salvar Alterações" onPress={handleSave} />
+            )}
+
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleBarberLogout}
+            >
+              <Text style={styles.logoutText}>Sair da Conta</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

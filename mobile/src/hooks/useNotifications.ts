@@ -2,10 +2,9 @@ import { useEffect, useRef } from "react";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { useNavigation } from "@react-navigation/native"; // 👈 Importe isso
+import { useNavigation } from "@react-navigation/native";
 import api from "../services/API";
 
-// Configura como a notificação aparece com o App ABERTO
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -15,76 +14,58 @@ Notifications.setNotificationHandler({
 });
 
 export function useNotifications(isBarber: boolean = false) {
-  const navigation = useNavigation<any>(); // 👈 Acesso à navegação
-  const notificationListener = useRef<any>();
-  const responseListener = useRef<any>();
+  const navigation = useNavigation<any>();
+
+  // Refs para guardar as inscrições
+  const notificationListener = useRef<Notifications.Subscription>();
+  const responseListener = useRef<Notifications.Subscription>();
 
   useEffect(() => {
-    let isMounted = true;
-
-    // 1. Registrar Token
     registerForPushNotificationsAsync().then((token) => {
-      if (token && isMounted) {
-        console.log("🔔 Token Mobile:", token);
+      if (token) {
         const url = isBarber
           ? "/notifications/token"
           : "/mobile/notifications/token";
-        api
-          .post(url, { token })
-          .catch((err) => console.log("Erro token:", err));
+        api.post(url, { token }).catch(() => {});
       }
     });
 
-    // 2. Ouvir Notificação Recebida (App Aberto)
+    // 1. Listener de Notificação Recebida (App Aberto)
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
-        // Pode fazer algo aqui se quiser (ex: atualizar lista)
+        // console.log("Notificação recebida:", notification);
       });
 
-    // 3. Ouvir CLIQUE na Notificação (Redirecionamento) 🚀
+    // 2. Listener de Clique na Notificação
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data;
-
-        if (data && data.screen) {
-          console.log("Navigating to:", data.screen);
-
-          // Mapeie os nomes das rotas do seu App aqui
-          switch (data.screen) {
-            case "BarberAgenda":
-              navigation.navigate("Agenda"); // Nome da rota do Tab Barbeiro
-              break;
-            case "ClientAppointments":
-              navigation.navigate("MyAppointments"); // Nome da rota do Cliente
-              break;
-            default:
-              console.log("Rota desconhecida:", data.screen);
-          }
+        if (data?.screen) {
+          if (data.screen === "BarberAgenda") navigation.navigate("Agenda");
+          else if (data.screen === "ClientAppointments")
+            navigation.navigate("Appointments");
         }
       });
 
+    // 👇 LIMPEZA CORRIGIDA (Clean Up)
     return () => {
-      isMounted = false;
-      if (notificationListener.current)
-        Notifications.removeNotificationSubscription(
-          notificationListener.current,
-        );
-      if (responseListener.current)
-        Notifications.removeNotificationSubscription(responseListener.current);
+      if (notificationListener.current) {
+        notificationListener.current.remove(); // <--- O jeito novo
+      }
+      if (responseListener.current) {
+        responseListener.current.remove(); // <--- O jeito novo
+      }
     };
   }, [isBarber, navigation]);
 }
 
 async function registerForPushNotificationsAsync() {
-  let token;
-
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("barber-sound-v3", {
-      name: "Notificações de Corte V3",
+      name: "Notificações de Corte",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#FF231F7C",
-      sound: "scissor.wav",
     });
   }
 
@@ -98,14 +79,8 @@ async function registerForPushNotificationsAsync() {
     }
     if (finalStatus !== "granted") return;
 
-    // Seu ID do EAS
-    const projectId = "ee0e849b-1ead-49b6-b472-f530a39097d6";
-    try {
-      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-    } catch (error) {
-      console.log("Erro Token:", error);
-    }
+    // Pega o token sem precisar de ID se o eas.json estiver configurado
+    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    return token;
   }
-
-  return token;
 }

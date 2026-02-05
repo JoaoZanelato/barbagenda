@@ -16,13 +16,12 @@ import {
 import { styles } from "./styles";
 import { useProfile } from "./useProfile";
 import { colors } from "../../../theme/colors";
+import { useAuth } from "../../../context/AuthContext"; // 👈 Contexto
 
-interface Props {
-  onLogout: () => void;
-}
-
-export function Profile({ onLogout }: Props) {
-  // Passamos o onLogout para o hook poder deslogar ao excluir
+// Removida prop 'onLogout'
+export function Profile() {
+  const { signOut } = useAuth(); // 👈 Hook
+  // Passamos o signOut do contexto para o hook de perfil (para caso de exclusão)
   const {
     image,
     userName,
@@ -30,7 +29,7 @@ export function Profile({ onLogout }: Props) {
     loading,
     pickImage,
     handleDeleteAccount,
-  } = useProfile(onLogout);
+  } = useProfile(signOut);
 
   if (loading) {
     return (
@@ -48,7 +47,6 @@ export function Profile({ onLogout }: Props) {
     <View style={styles.container}>
       <Text style={styles.title}>Meu Perfil</Text>
 
-      {/* Avatar */}
       <View style={styles.avatarContainer}>
         {image ? (
           <Image source={{ uri: image }} style={styles.avatar} />
@@ -63,10 +61,8 @@ export function Profile({ onLogout }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Nome */}
       <Text style={styles.name}>{userName}</Text>
 
-      {/* Data de Cadastro */}
       <View
         style={{
           flexDirection: "row",
@@ -82,12 +78,11 @@ export function Profile({ onLogout }: Props) {
       <View style={styles.divider} />
 
       {/* Botão Sair */}
-      <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
+      <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
         <LogOut size={20} color="#E4E4E7" />
         <Text style={styles.logoutText}>Sair do Aplicativo</Text>
       </TouchableOpacity>
 
-      {/* Botão Excluir Conta (Zona de Perigo) */}
       <TouchableOpacity
         style={styles.deleteButton}
         onPress={handleDeleteAccount}

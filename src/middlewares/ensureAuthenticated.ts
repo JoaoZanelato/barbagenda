@@ -1,42 +1,41 @@
 import { Request, Response, NextFunction } from "express";
 import { verify } from "jsonwebtoken";
 
-interface IPayload {
-  sub: string;
-  tenantId: string;
-}
-
 export function ensureAuthenticated(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
-  // Tenta pegar o token do Header (Authorization) OU do Cookie
   const authToken = req.headers.authorization || req.cookies.barber_token;
 
   if (!authToken) {
-    return res
-      .status(401)
-      .json({
-        errorCode: "token.missing",
-        message: "Faça login para continuar",
-      });
+    return res.status(401).json({
+      errorCode: "token.missing",
+      message: "Faça login para continuar",
+    });
   }
 
-  // Se vier com 'Bearer ' na frente (header), limpa. Se vier do cookie, já é limpo.
   const token = authToken.includes("Bearer")
     ? authToken.split(" ")[1]
     : authToken;
 
   try {
-    const { sub, tenantId } = verify(
-      token,
-      process.env.JWT_SECRET as string,
-    ) as IPayload;
+    const decoded = verify(token, process.env.JWT_SECRET as string) as any;
 
-    // Injeta os dados na requisição para os Controllers usarem
+    const { sub, tenant_id, tenantId } = decoded;
+    const finalTenantId = tenant_id || tenantId;
+
+    if (!finalTenantId) {
+      return res.status(401).json({ error: "Token inválido (sem tenant_id)" });
+    }
+
     (req as any).user_id = sub;
-    (req as any).tenant_id = tenantId;
+    (req as any).tenant_id = finalTenantId;
+
+    req.user = {
+      id: sub,
+      tenant_id: finalTenantId,
+    };
 
     return next();
   } catch (err) {

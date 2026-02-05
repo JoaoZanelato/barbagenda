@@ -7,12 +7,11 @@ import { ptBR } from "date-fns/locale";
 const notificationService = new NotificationService();
 
 export class AppointmentController {
-  // 1. LISTAGEM (Painel)
+  // 1. LISTAGEM (Painel Web - Barbeiro)
   async index(req: Request, res: Response) {
     const { start_time, end_time } = req.query;
-    const tenant_id = req.tenant_id;
+    const tenant_id = req.tenant_id; // Pega do Middleware Web
 
-    // Filtro dinâmico de datas
     const where: any = { tenant_id };
     if (start_time && end_time) {
       where.start_time = {
@@ -48,23 +47,23 @@ export class AppointmentController {
     }
   }
 
-  // 2. CRIAÇÃO (App Cliente -> Avisa Barbeiro)
+  // 2. CRIAÇÃO (App Cliente)
   async store(req: Request, res: Response) {
     const { professional_id, service_id, start_time } = req.body;
-    const { authenticatedPhone } = req.body;
+    const client_id = (req as any).user_id; // 👈 ID do Token
 
     if (!professional_id)
       return res.status(400).json({ error: "Profissional não informado." });
 
+    // Busca dados do cliente (Nome) para notificação
     const appClient = await prisma.app_clients.findUnique({
-      where: { phone: authenticatedPhone },
+      where: { id: client_id },
     });
-    if (!appClient)
-      return res.status(401).json({ error: "Cliente não autenticado." });
+    if (!appClient) return res.status(401).json({ error: "Cliente inválido." });
 
     const professional = await prisma.users.findUnique({
       where: { id: professional_id },
-      select: { tenant_id: true, push_token: true, name: true }, // Pega token
+      select: { tenant_id: true, push_token: true, name: true },
     });
 
     if (!professional || !professional.tenant_id)
@@ -86,40 +85,33 @@ export class AppointmentController {
           new Date(start_time).getTime() + service.duration_minutes * 60000,
         ),
         total_price: service.price,
-        app_client_id: appClient.id,
+        app_client_id: client_id, // Usa o ID direto
       },
     });
 
-    // 👇 NOTIFICAÇÃO RICA PARA O BARBEIRO
+    // Notificação
     if (professional.push_token) {
       const dia = format(new Date(start_time), "dd 'de' MMMM", {
         locale: ptBR,
       });
       const hora = format(new Date(start_time), "HH:mm");
-
       await notificationService.send(
         professional.push_token,
         "✂️ Novo Agendamento!",
         `${appClient.name} marcou ${service.name}\n📅 ${dia} às ${hora}`,
-        { screen: "BarberAgenda" }, // Redireciona para Agenda
+        { screen: "BarberAgenda" },
       );
     }
 
     return res.status(201).json(appointment);
   }
 
-  // 3. MEUS AGENDAMENTOS
+  // 3. MEUS AGENDAMENTOS (App Cliente)
   async listMobile(req: Request, res: Response) {
-    const { authenticatedPhone } = req.body;
-    const appClient = await prisma.app_clients.findUnique({
-      where: { phone: authenticatedPhone },
-    });
-
-    if (!appClient)
-      return res.status(400).json({ error: "Cliente não encontrado" });
+    const client_id = (req as any).user_id; // 👈 ID do Token
 
     const myAppointments = await prisma.appointments.findMany({
-      where: { app_client_id: appClient.id },
+      where: { app_client_id: client_id },
       include: {
         tenants: {
           select: {
@@ -139,23 +131,21 @@ export class AppointmentController {
     return res.json(myAppointments);
   }
 
-  // 4. CANCELAR (App Cliente -> Avisa Barbeiro)
+  // 4. CANCELAR (App Cliente)
   async cancelMobile(req: Request, res: Response) {
     const { id } = req.params;
-    const { authenticatedPhone } = req.body;
-
-    const appClient = await prisma.app_clients.findUnique({
-      where: { phone: authenticatedPhone },
-    });
-    if (!appClient) return res.status(401).json({ error: "Não autorizado" });
+    const client_id = (req as any).user_id; // 👈 ID do Token
 
     const appointment = await prisma.appointments.findUnique({
       where: { id },
-      include: { users: true }, // Inclui dados do barbeiro
+      include: { users: true, app_client: true },
     });
 
-    if (!appointment || appointment.app_client_id !== appClient.id) {
-      return res.status(404).json({ error: "Agendamento não encontrado." });
+    // Garante que o agendamento pertence a quem está tentando cancelar
+    if (!appointment || appointment.app_client_id !== client_id) {
+      return res
+        .status(404)
+        .json({ error: "Agendamento não encontrado ou não autorizado." });
     }
 
     await prisma.appointments.update({
@@ -163,13 +153,12 @@ export class AppointmentController {
       data: { status: "cancelled" },
     });
 
-    // 👇 AVISA O BARBEIRO
     if (appointment.users?.push_token) {
       const hora = format(new Date(appointment.start_time), "HH:mm");
       await notificationService.send(
         appointment.users.push_token,
         "❌ Agendamento Cancelado",
-        `O cliente ${appClient.name} cancelou o horário das ${hora}.`,
+        `O cliente ${appointment.app_client?.name} cancelou o horário das ${hora}.`,
         { screen: "BarberAgenda" },
       );
     }
@@ -177,7 +166,7 @@ export class AppointmentController {
     return res.status(200).send();
   }
 
-  // 5. ATUALIZAR STATUS (Barbeiro -> Avisa Cliente)
+  // 5. ATUALIZAR STATUS (Painel Web - Barbeiro)
   async update(req: Request, res: Response) {
     const { id } = req.params;
     const { status } = req.body;
@@ -188,14 +177,13 @@ export class AppointmentController {
       include: { app_client: true, services: true },
     });
 
-    // 👇 AVISA O CLIENTE
     if (appointment.app_client?.push_token) {
       let title = "Atualização do Agendamento";
       let body = `Seu status mudou para ${status}.`;
 
       if (status === "COMPLETED") {
         title = "✅ Visual Novo!";
-        body = `Seu corte de ${appointment.services?.name} foi concluído. O que achou?`;
+        body = `Seu corte de ${appointment.services?.name} foi concluído.`;
       } else if (status === "CANCELLED") {
         title = "🚫 Agendamento Cancelado";
         body = "O barbeiro precisou cancelar seu horário. Toque para remarcar.";
@@ -205,7 +193,7 @@ export class AppointmentController {
         appointment.app_client.push_token,
         title,
         body,
-        { screen: "ClientAppointments" }, // Redireciona para Histórico
+        { screen: "ClientAppointments" },
       );
     }
 

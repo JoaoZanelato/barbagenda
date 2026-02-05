@@ -2,94 +2,109 @@ import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
 import { compare, hash } from "bcryptjs";
 import { sign } from "jsonwebtoken";
-import { deleteFile } from "../utils/file"; // 👈 Importe o utilitário
+import { deleteFile } from "../utils/file";
 
 export class MobileAuthController {
   // 1. REGISTER
   async register(req: Request, res: Response) {
-    const { name, email, password, phone } = req.body;
+    const { name, phone, pin } = req.body; // Usa PIN
 
-    if (!email || !password || !phone) {
-      return res.status(400).json({ error: "Preencha todos os campos" });
+    if (!name || !phone || !pin) {
+      return res.status(400).json({ error: "Preencha nome, telefone e PIN." });
     }
 
-    const userExists = await prisma.app_clients.findFirst({
-      where: { OR: [{ email }, { phone }] },
+    const userExists = await prisma.app_clients.findUnique({
+      where: { phone },
     });
 
     if (userExists) {
-      return res
-        .status(400)
-        .json({ error: "E-mail ou telefone já cadastrado" });
+      return res.status(400).json({ error: "Telefone já cadastrado." });
     }
 
-    const passwordHash = await hash(password, 8);
+    const pinHash = await hash(pin, 8);
 
-    const client = await prisma.app_clients.create({
-      data: {
-        name,
-        email,
-        phone,
-        password: passwordHash,
-      },
-    });
+    try {
+      const client = await prisma.app_clients.create({
+        data: {
+          name,
+          phone,
+          pin_hash: pinHash, // Salva o hash do PIN
+        },
+      });
 
-    return res.json(client);
+      const token = sign({ sub: client.id }, process.env.JWT_SECRET as string, {
+        expiresIn: "30d",
+      });
+
+      return res.json({
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        token,
+      });
+    } catch (error) {
+      return res.status(500).json({ error: "Erro ao criar conta." });
+    }
   }
 
   // 2. LOGIN
   async login(req: Request, res: Response) {
-    const { email, password } = req.body;
+    const { phone, pin } = req.body;
 
+    if (!phone || !pin) {
+      return res.status(400).json({ error: "Informe telefone e PIN." });
+    }
+
+    // Busca pelo TELEFONE
     const client = await prisma.app_clients.findUnique({
-      where: { email },
+      where: { phone },
     });
 
     if (!client) {
-      return res.status(400).json({ error: "E-mail ou senha incorretos" });
+      return res.status(400).json({ error: "Telefone ou PIN incorretos." });
     }
 
-    const passwordMatch = await compare(password, client.password);
+    // Compara PIN
+    const pinMatch = await compare(pin, client.pin_hash);
 
-    if (!passwordMatch) {
-      return res.status(400).json({ error: "E-mail ou senha incorretos" });
+    if (!pinMatch) {
+      return res.status(400).json({ error: "Telefone ou PIN incorretos." });
     }
 
-    const token = sign(
-      { clientId: client.id, email: client.email },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "30d" },
-    );
+    const token = sign({ sub: client.id }, process.env.JWT_SECRET as string, {
+      expiresIn: "30d",
+    });
 
     return res.json({
       id: client.id,
       name: client.name,
-      email: client.email,
+      phone: client.phone,
+      avatar_url: client.avatar_url,
       token,
     });
   }
 
   // 3. ME (Perfil)
   async me(req: Request, res: Response) {
-    const client_id = (req as any).clientId;
+    const user_id = (req as any).user_id; // Pega do middleware corrigido
+
     const client = await prisma.app_clients.findUnique({
-      where: { id: client_id },
+      where: { id: user_id },
     });
+
     return res.json(client);
   }
 
-  // 4. UPDATE (Com delete de imagem antiga)
+  // 4. UPDATE
   async update(req: Request, res: Response) {
-    const { name, email, phone, avatar_url } = req.body;
-    const client_id = (req as any).clientId;
+    const { name, phone, avatar_url } = req.body;
+    const user_id = (req as any).user_id;
 
     try {
-      // Busca usuário atual
       const currentUser = await prisma.app_clients.findUnique({
-        where: { id: client_id },
+        where: { id: user_id },
       });
 
-      // Se mudou a foto, deleta a antiga
       if (
         currentUser?.avatar_url &&
         avatar_url &&
@@ -99,8 +114,8 @@ export class MobileAuthController {
       }
 
       const client = await prisma.app_clients.update({
-        where: { id: client_id },
-        data: { name, email, phone, avatar_url },
+        where: { id: user_id },
+        data: { name, phone, avatar_url },
       });
 
       return res.json(client);
@@ -109,23 +124,16 @@ export class MobileAuthController {
     }
   }
 
-  // 5. DELETE (Deleta conta e imagem)
+  // 5. DELETE
   async delete(req: Request, res: Response) {
-    const client_id = (req as any).clientId;
-
+    const user_id = (req as any).user_id;
     try {
       const client = await prisma.app_clients.findUnique({
-        where: { id: client_id },
+        where: { id: user_id },
       });
+      if (client?.avatar_url) await deleteFile(client.avatar_url);
 
-      if (client?.avatar_url) {
-        await deleteFile(client.avatar_url);
-      }
-
-      await prisma.app_clients.delete({
-        where: { id: client_id },
-      });
-
+      await prisma.app_clients.delete({ where: { id: user_id } });
       return res.status(200).send();
     } catch (error) {
       return res.status(400).json({ error: "Erro ao deletar conta" });

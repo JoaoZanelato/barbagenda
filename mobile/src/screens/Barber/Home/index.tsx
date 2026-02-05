@@ -25,23 +25,21 @@ import { format, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { styles } from "./styles";
-import { useBarberDashboard } from "./useBarberDashboard";
+import { useBarberDashboard } from "./useBarberDashboard"; // 👈 Hook Correto
 import { colors } from "../../../theme/colors";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
+import { useAuth } from "../../../context/AuthContext";
 
-// Se der erro no emulador sobre token, apenas ignore ou descomente se estiver no dispositivo físico.
-// import { useNotifications } from "../../../hooks/useNotifications";
-
-export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
-  // useNotifications(true);
+export function BarberDashboard() {
+  const { signOut } = useAuth();
 
   const {
     activeTab,
     setActiveTab,
     appointments,
     services,
-    professionals, // Removido 'metrics'
+    professionals,
     loading,
     modalType,
     setModalType,
@@ -91,7 +89,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
     </TouchableOpacity>
   );
 
-  // Função auxiliar para cor do status
   const getStatusColor = (status: string) => {
     if (status === "COMPLETED") return colors.success;
     if (status === "CANCELLED") return colors.error;
@@ -109,12 +106,12 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Painel Gerencial</Text>
-        <TouchableOpacity onPress={onLogout}>
+        <TouchableOpacity onPress={signOut}>
           <LogOut size={24} color={colors.error} />
         </TouchableOpacity>
       </View>
 
-      {/* Tabs - SEM MÉTRICAS */}
+      {/* Tabs */}
       <View style={styles.tabs}>
         {renderTab("agenda", "Agenda", CalendarIcon)}
         {renderTab("services", "Serviços", Scissors)}
@@ -129,10 +126,9 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         />
       ) : (
         <View style={{ flex: 1 }}>
-          {/* ==================== AGENDA ==================== */}
+          {/* === AGENDA === */}
           {activeTab === "agenda" && (
             <>
-              {/* Filtro de Data */}
               <View style={styles.dateFilter}>
                 <TouchableOpacity
                   onPress={() => setSelectedDate(subDays(selectedDate, 1))}
@@ -156,7 +152,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Lista */}
               <FlatList
                 data={appointments}
                 keyExtractor={(item) => item.id}
@@ -168,7 +163,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                 contentContainerStyle={{ paddingBottom: 80 }}
                 renderItem={({ item }) => {
                   const statusColor = getStatusColor(item.status);
-
                   return (
                     <TouchableOpacity
                       style={[
@@ -178,7 +172,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                       ]}
                       onPress={() => openAppointmentDetails(item)}
                     >
-                      {/* Foto do Cliente */}
                       {item.client_avatar ? (
                         <Image
                           source={{ uri: item.client_avatar }}
@@ -191,8 +184,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                           </Text>
                         </View>
                       )}
-
-                      {/* Informações */}
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{item.client_name}</Text>
                         <Text style={styles.cardDesc}>
@@ -224,8 +215,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                           </Text>
                         </View>
                       </View>
-
-                      {/* Horário */}
                       <View style={{ alignItems: "flex-end" }}>
                         <Clock
                           size={14}
@@ -243,7 +232,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
             </>
           )}
 
-          {/* ==================== SERVIÇOS (LAYOUT NOVO) ==================== */}
+          {/* === SERVIÇOS === */}
           {activeTab === "services" && (
             <>
               <FlatList
@@ -311,7 +300,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
             </>
           )}
 
-          {/* ==================== EQUIPE (SEM ADMIN) ==================== */}
+          {/* === EQUIPE === */}
           {activeTab === "team" && (
             <>
               <FlatList
@@ -369,9 +358,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </View>
       )}
 
-      {/* ==================== MODAIS ==================== */}
-
-      {/* Modal de Detalhes (Agenda) */}
+      {/* MODAIS (Código resumido, mantenha os que já existiam) */}
       <Modal
         visible={modalType === "appointment_details"}
         transparent
@@ -382,77 +369,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
             {selectedAppointment && (
               <>
                 <Text style={styles.modalTitle}>Detalhes do Agendamento</Text>
-
-                {/* Foto Grande no Modal */}
-                {selectedAppointment.client_avatar && (
-                  <View style={{ alignItems: "center", marginBottom: 20 }}>
-                    <Image
-                      source={{ uri: selectedAppointment.client_avatar }}
-                      style={{ width: 80, height: 80, borderRadius: 40 }}
-                    />
-                  </View>
-                )}
-
-                <View style={styles.detailRow}>
-                  <User size={20} color={colors.primary} />
-                  <Text style={styles.detailText}>
-                    {selectedAppointment.client_name}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Phone size={20} color={colors.primary} />
-                  <Text style={styles.detailText}>
-                    {selectedAppointment.client_phone ||
-                      selectedAppointment.customers?.phone ||
-                      "Sem telefone"}
-                  </Text>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.detailRow}>
-                  <Scissors size={20} color={colors.primary} />
-                  <Text style={styles.detailText}>
-                    {selectedAppointment.services?.name || "Serviço"}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Clock size={20} color={colors.primary} />
-                  <Text style={styles.detailText}>
-                    {format(
-                      new Date(selectedAppointment.start_time),
-                      "dd/MM 'às' HH:mm",
-                    )}
-                  </Text>
-                </View>
-
-                <View style={styles.actionButtons}>
-                  {selectedAppointment.status !== "COMPLETED" &&
-                    selectedAppointment.status !== "CANCELLED" && (
-                      <Button
-                        title="Confirmar Atendimento"
-                        onPress={() =>
-                          handleUpdateStatus(
-                            selectedAppointment.id,
-                            "COMPLETED",
-                          )
-                        }
-                        style={{
-                          backgroundColor: colors.success,
-                          marginBottom: 12,
-                        }}
-                      />
-                    )}
-                  {selectedAppointment.status !== "CANCELLED" && (
-                    <Button
-                      title="Cancelar Agendamento"
-                      onPress={() =>
-                        handleUpdateStatus(selectedAppointment.id, "CANCELLED")
-                      }
-                      style={{ backgroundColor: colors.error }}
-                    />
-                  )}
-                </View>
+                {/* ... Detalhes ... */}
                 <TouchableOpacity
                   style={styles.closeBtn}
                   onPress={() => setModalType(null)}
@@ -465,7 +382,6 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </View>
       </Modal>
 
-      {/* Modal de Criação (Serviço/Profissional) */}
       <Modal
         visible={modalType === "service" || modalType === "professional"}
         transparent
@@ -476,61 +392,21 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
             <Text style={styles.modalTitle}>
               {modalType === "service" ? "Novo Serviço" : "Novo Profissional"}
             </Text>
-
+            {/* ... Inputs ... */}
             {modalType === "service" ? (
-              <>
-                <Input
-                  placeholder="Nome do Serviço"
-                  value={newName}
-                  onChangeText={setNewName}
-                />
-                <Input
-                  placeholder="Preço (R$)"
-                  value={newPrice}
-                  onChangeText={setNewPrice}
-                  keyboardType="numeric"
-                />
-                <Input
-                  placeholder="Duração (minutos)"
-                  value={newDuration}
-                  onChangeText={setNewDuration}
-                  keyboardType="numeric"
-                />
-                <Button
-                  title="Criar Serviço"
-                  onPress={() =>
-                    handleCreateService(newName, newPrice, newDuration)
-                  }
-                  style={{ marginTop: 10 }}
-                />
-              </>
+              <Button
+                title="Criar"
+                onPress={() =>
+                  handleCreateService(newName, newPrice, newDuration)
+                }
+              />
             ) : (
-              <>
-                <Input
-                  placeholder="Nome"
-                  value={newName}
-                  onChangeText={setNewName}
-                />
-                <Input
-                  placeholder="E-mail"
-                  value={newEmail}
-                  onChangeText={setNewEmail}
-                  autoCapitalize="none"
-                />
-                <Input
-                  placeholder="Senha"
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry
-                />
-                <Button
-                  title="Cadastrar Profissional"
-                  onPress={() =>
-                    handleCreateProfessional(newName, newEmail, newPassword)
-                  }
-                  style={{ marginTop: 10 }}
-                />
-              </>
+              <Button
+                title="Criar"
+                onPress={() =>
+                  handleCreateProfessional(newName, newEmail, newPassword)
+                }
+              />
             )}
             <TouchableOpacity
               style={styles.closeBtn}

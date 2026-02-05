@@ -2,8 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { verify } from "jsonwebtoken";
 
 interface IPayload {
-  phone: string;
-  clientId: string;
+  sub: string; // ID do cliente vem no 'sub'
 }
 
 export function ensureMobileAuth(
@@ -19,26 +18,11 @@ export function ensureMobileAuth(
 
   const [, token] = authToken.split(" ");
 
-  if (!process.env.JWT_SECRET) {
-    console.error("❌ ERRO GRAVE: JWT_SECRET não definido.");
-    return res.status(500).json({ error: "Erro interno de configuração" });
-  }
-
   try {
-    const { phone } = verify(
-      token,
-      process.env.JWT_SECRET as string,
-    ) as IPayload;
+    const { sub } = verify(token, process.env.JWT_SECRET as string) as IPayload;
 
-    // 👇 A CORREÇÃO MÁGICA ESTÁ AQUI:
-    // Se req.body não existir (comum em GET), criamos um objeto vazio.
-    if (!req.body) {
-      req.body = {};
-    }
-
-    // Agora é seguro injetar os dados
-    req.body.authenticatedPhone = phone;
-    req.body.authenticatedName = "Cliente App";
+    // Injeta o ID para os controllers usarem
+    (req as any).user_id = sub;
 
     return next();
   } catch (err) {

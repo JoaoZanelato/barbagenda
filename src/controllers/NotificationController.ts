@@ -4,9 +4,9 @@ import { prisma } from "../prisma/client";
 export class NotificationController {
   // --- BARBEIRO ---
 
-  // Salvar Token
   async saveBarberToken(req: Request, res: Response) {
     const { token } = req.body;
+    // user_id vem do ensureAuthenticated (Web)
     const user_id = (req as any).user_id;
 
     if (!token) return res.status(400).json({ error: "Token ausente" });
@@ -22,13 +22,12 @@ export class NotificationController {
     }
   }
 
-  // Remover Token (Logout)
   async removeBarberToken(req: Request, res: Response) {
     const user_id = (req as any).user_id;
     try {
       await prisma.users.update({
         where: { id: user_id },
-        data: { push_token: null }, // 🗑️
+        data: { push_token: null },
       });
       return res.status(200).send();
     } catch (error) {
@@ -38,10 +37,10 @@ export class NotificationController {
 
   // --- CLIENTE ---
 
-  // Salvar Token
   async saveClientToken(req: Request, res: Response) {
     const { token } = req.body;
-    const client_id = (req as any).clientId;
+    // 👇 CORREÇÃO: Pega user_id do ensureMobileAuth
+    const client_id = (req as any).user_id;
 
     if (!token) return res.status(400).json({ error: "Token ausente" });
 
@@ -56,13 +55,12 @@ export class NotificationController {
     }
   }
 
-  // Remover Token (Logout)
   async removeClientToken(req: Request, res: Response) {
-    const client_id = (req as any).clientId;
+    const client_id = (req as any).user_id; // 👇 CORREÇÃO
     try {
       await prisma.app_clients.update({
         where: { id: client_id },
-        data: { push_token: null }, // 🗑️
+        data: { push_token: null },
       });
       return res.status(200).send();
     } catch (error) {

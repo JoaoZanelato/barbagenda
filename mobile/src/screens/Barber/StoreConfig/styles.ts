@@ -1,59 +1,133 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 import { colors } from "../../../theme/colors";
 
 export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#09090B" },
-  content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
-  title: { color: "#FFF", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
 
-  logoContainer: { alignItems: "center", marginBottom: 20 },
+  // Header fixo no topo
+  header: {
+    paddingHorizontal: 24,
+    // Ajuste dinâmico para iPhone (notch) e Android
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 20,
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: "#27272A",
+  },
+  title: {
+    color: colors.text,
+    fontSize: 24,
+    fontFamily: "PlayfairDisplay_700Bold",
+  },
+
+  content: {
+    padding: 24,
+  },
+
+  // Área da Logo
+  logoSection: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
   logoButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#27272A",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#18181B",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#3F3F46",
+    position: "relative", // Para o badge funcionar
   },
-  logoImage: { width: 100, height: 100 },
-  logoText: { color: colors.primary, marginTop: 8, fontSize: 14 },
-
-  label: { color: "#A1A1AA", marginBottom: 6, fontSize: 14, fontWeight: "500" },
-  input: {
-    backgroundColor: "#18181B",
-    color: "#FFF",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#27272A",
+  logoImage: {
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+  },
+  placeholderLogo: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  logoText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontFamily: "Montserrat_400Regular",
+  },
+  editBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.primary, // Dourado
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.background,
   },
 
-  row: { flexDirection: "row", gap: 10 },
-  flex1: { flex: 1 },
-  flex2: { flex: 2 },
+  // Agrupamento de campos
+  formGroup: {
+    marginBottom: 24,
+  },
+  sectionLabel: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontFamily: "Montserrat_700Bold",
+    marginBottom: 12,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
 
-  saveButton: {
-    backgroundColor: colors.primary,
+  // Linhas
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  // Botão GPS Personalizado
+  gpsButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 16,
+    backgroundColor: "rgba(212, 175, 55, 0.1)", // Dourado bem fraquinho
+    padding: 14,
     borderRadius: 8,
     gap: 8,
-    marginTop: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: "dashed",
   },
-  saveText: { color: "#09090B", fontWeight: "bold", fontSize: 16 },
+  gpsButtonActive: {
+    backgroundColor: "rgba(16, 185, 129, 0.1)", // Verde fraquinho
+    borderColor: "#10B981",
+    borderStyle: "solid",
+  },
+  gpsText: {
+    color: colors.primary,
+    fontFamily: "Montserrat_700Bold",
+    fontSize: 14,
+  },
+
+  footer: {
+    marginTop: 12,
+    gap: 16,
+  },
 
   logoutButton: {
-    marginTop: 40,
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
+    padding: 16,
   },
-  logoutText: { color: "#EF4444", fontWeight: "bold" },
+  logoutText: {
+    color: "#EF4444",
+    fontWeight: "bold",
+    fontFamily: "Montserrat_700Bold",
+  },
 });
