@@ -1,22 +1,30 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 import { colors } from "../../theme/colors";
 
 export const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     backgroundColor: "#18181B",
-    paddingVertical: 15,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderColor: "#27272A",
-    paddingBottom: 25, // Ajuste para iPhones sem botão home
+    // 👇 Ajuste para Safe Area do iPhone (Notch)
+    paddingBottom: Platform.OS === "ios" ? 28 : 12,
+    justifyContent: "space-around",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   tab: {
-    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
+    minWidth: 60,
   },
   text: {
-    fontSize: 12,
+    fontSize: 10, // Texto um pouco menor para delicadeza
     color: "#71717A",
     fontWeight: "600",
   },

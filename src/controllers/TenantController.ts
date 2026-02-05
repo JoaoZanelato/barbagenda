@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
 import { hash } from "bcryptjs";
-import { deleteFile } from "../utils/file"; // 👈 Lógica de limpeza mantida
+import { deleteFile } from "../utils/file";
 
 export class TenantController {
-  // 1. LISTAGEM PARA O APP (Mantida sua lógica original com select específico)
   async index(req: Request, res: Response) {
     const tenants = await prisma.tenants.findMany({
       select: {
@@ -22,31 +21,24 @@ export class TenantController {
         longitude: true,
       },
     });
-
     return res.json(tenants);
   }
 
-  // 2. CRIAÇÃO (Mantida sua lógica robusta com Transaction)
   async store(req: Request, res: Response) {
     const { name, slug, email, password, phone } = req.body;
-
-    // Validações
     const tenantExists = await prisma.tenants.findUnique({ where: { slug } });
     const userExists = await prisma.users.findUnique({ where: { email } });
 
-    if (tenantExists || userExists) {
+    if (tenantExists || userExists)
       return res.status(400).json({ error: "Slug ou Email já em uso." });
-    }
 
     const passwordHash = await hash(password, 8);
 
     try {
-      // Cria Tenant e Admin juntos
       const result = await prisma.$transaction(async (prisma) => {
         const tenant = await prisma.tenants.create({
           data: { name, slug, phone },
         });
-
         const user = await prisma.users.create({
           data: {
             name,
@@ -57,24 +49,23 @@ export class TenantController {
             phone,
           },
         });
-
         return { tenant, user };
       });
-
       return res.json(result);
     } catch (error) {
-      console.error(error);
       return res.status(500).json({ error: "Erro ao criar barbearia." });
     }
   }
 
-  // 3. ATUALIZAR (Sua lógica + Delete de imagem antiga)
   async update(req: Request, res: Response) {
-    // O tenant_id vem do middleware ensureAuthenticated (que popula o req)
-    const tenant_id = req.tenant_id;
-    const data = req.body;
+    // 👇 CORREÇÃO CRÍTICA: Garante que pega o ID de onde estiver disponível
+    const tenant_id = req.tenant_id || (req.user && req.user.tenant_id);
 
-    // Seus campos permitidos
+    if (!tenant_id) {
+      return res.status(401).json({ error: "ID da barbearia não encontrado." });
+    }
+
+    const data = req.body;
     const {
       logo_url,
       cover_url,
@@ -88,29 +79,24 @@ export class TenantController {
       zip_code,
       latitude,
       longitude,
-      name, // Adicionei name caso queira editar o nome da loja
+      name,
     } = data;
 
     try {
-      // 1. Busca a barbearia ATUAL para pegar a logo antiga
       const currentTenant = await prisma.tenants.findUnique({
         where: { id: tenant_id },
       });
-
-      if (!currentTenant) {
+      if (!currentTenant)
         return res.status(404).json({ error: "Barbearia não encontrada" });
-      }
 
-      // 2. Verifica se precisa deletar a logo antiga (Lógica Nova)
       if (
         currentTenant.logo_url &&
         logo_url &&
         currentTenant.logo_url !== logo_url
       ) {
-        await deleteFile(currentTenant.logo_url); // 🗑️ Apaga a velha
+        await deleteFile(currentTenant.logo_url);
       }
 
-      // 3. Atualiza com os campos filtrados
       const tenant = await prisma.tenants.update({
         where: { id: tenant_id },
         data: {
@@ -133,9 +119,7 @@ export class TenantController {
       return res.json(tenant);
     } catch (error) {
       console.error("Erro update tenant:", error);
-      return res
-        .status(400)
-        .json({ error: "Erro ao atualizar perfil da barbearia." });
+      return res.status(400).json({ error: "Erro ao atualizar perfil." });
     }
   }
 }

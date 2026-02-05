@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Alert, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location"; // 👈 Importe
+import * as Location from "expo-location";
 import api from "../../../services/API";
 
 export function useStoreConfig() {
@@ -13,7 +13,7 @@ export function useStoreConfig() {
     address_num: "",
     neighborhood: "",
     logo_url: "",
-    latitude: null as number | null, // 👈 Novos campos
+    latitude: null as number | null,
     longitude: null as number | null,
   });
 
@@ -23,39 +23,33 @@ export function useStoreConfig() {
 
   const fixImageURL = (url: string) => {
     if (!url) return "";
-    const baseURL = api.defaults.baseURL;
-    if (!baseURL) return url;
-    if (url.includes("localhost") || url.includes("127.0.0.1")) {
-      return url.replace(/http:\/\/(localhost|127\.0\.0\.1):3333/g, baseURL);
-    }
+    if (!url.includes("http")) return `${api.defaults.baseURL}/files/${url}`;
     return url;
   };
 
   async function loadData() {
     try {
       const response = await api.get("/tenants");
-      if (response.data.length > 0) {
+      // 👇 Verifica se retornou array e pega o primeiro item
+      if (Array.isArray(response.data) && response.data.length > 0) {
         const tenant = response.data[0];
+        setData({ ...tenant, logo_url: fixImageURL(tenant.logo_url) });
+      } else if (response.data && !Array.isArray(response.data)) {
+        // Caso a API retorne objeto direto
         setData({
-          ...tenant,
-          logo_url: fixImageURL(tenant.logo_url),
+          ...response.data,
+          logo_url: fixImageURL(response.data.logo_url),
         });
       }
     } catch (error) {
-      console.log("Erro ao carregar dados da loja", error);
+      console.log("Erro ao carregar loja", error);
     }
   }
 
-  // 👇 NOVA FUNÇÃO: Pegar GPS
   async function handleGetLocation() {
     const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Erro",
-        "Precisamos de permissão para pegar sua localização.",
-      );
-      return;
-    }
+    if (status !== "granted")
+      return Alert.alert("Erro", "Sem permissão de GPS.");
 
     setLoading(true);
     try {
@@ -65,9 +59,9 @@ export function useStoreConfig() {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       }));
-      Alert.alert("Sucesso", "Localização GPS capturada!");
-    } catch (error) {
-      Alert.alert("Erro", "Não foi possível obter localização.");
+      Alert.alert("Sucesso", "Localização capturada!");
+    } catch {
+      Alert.alert("Erro", "Falha ao pegar GPS.");
     } finally {
       setLoading(false);
     }
@@ -75,10 +69,8 @@ export function useStoreConfig() {
 
   async function handlePickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permissão necessária", "Precisamos de acesso às fotos.");
-      return;
-    }
+    if (status !== "granted")
+      return Alert.alert("Erro", "Sem permissão de Fotos.");
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
@@ -89,7 +81,6 @@ export function useStoreConfig() {
     if (!result.canceled && result.assets[0]) {
       const selectedImage = result.assets[0];
       const formData = new FormData();
-
       const uri =
         Platform.OS === "ios"
           ? selectedImage.uri.replace("file://", "")
@@ -105,10 +96,9 @@ export function useStoreConfig() {
         const response = await api.post("/upload", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        const uploadedUrl = response.data.url;
-        setData((prev) => ({ ...prev, logo_url: fixImageURL(uploadedUrl) }));
-        Alert.alert("Sucesso", "Logo enviada!");
-      } catch (error) {
+        setData((prev) => ({ ...prev, logo_url: response.data.url }));
+        Alert.alert("Sucesso", "Logo enviada! Salve para confirmar.");
+      } catch {
         Alert.alert("Erro", "Falha ao enviar imagem.");
       } finally {
         setLoading(false);
@@ -119,9 +109,22 @@ export function useStoreConfig() {
   async function handleSave() {
     setLoading(true);
     try {
-      await api.put("/tenants/profile", data);
+      // 👇 Envia apenas os dados necessários
+      const payload = {
+        name: data.name,
+        phone: data.phone,
+        address: data.address,
+        address_num: data.address_num,
+        neighborhood: data.neighborhood,
+        logo_url: data.logo_url,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      };
+
+      await api.put("/tenants/profile", payload);
       Alert.alert("Sucesso", "Dados atualizados!");
-    } catch (error) {
+    } catch (error: any) {
+      console.log("Erro Save:", error.response?.data);
       Alert.alert("Erro", "Não foi possível salvar.");
     } finally {
       setLoading(false);
@@ -134,6 +137,6 @@ export function useStoreConfig() {
     loading,
     handlePickImage,
     handleSave,
-    handleGetLocation, // 👈 Exporte
+    handleGetLocation,
   };
 }

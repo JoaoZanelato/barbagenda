@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
-  ScrollView,
   ActivityIndicator,
   Modal,
   Image,
@@ -13,7 +12,6 @@ import {
   LogOut,
   Calendar as CalendarIcon,
   Scissors,
-  TrendingUp,
   Users,
   Plus,
   Trash2,
@@ -31,18 +29,19 @@ import { useBarberDashboard } from "./useBarberDashboard";
 import { colors } from "../../../theme/colors";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
-import { useNotifications } from "../../../hooks/useNotifications";
+
+// Se der erro no emulador sobre token, apenas ignore ou descomente se estiver no dispositivo físico.
+// import { useNotifications } from "../../../hooks/useNotifications";
 
 export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
-  useNotifications(true);
+  // useNotifications(true);
 
   const {
     activeTab,
     setActiveTab,
     appointments,
     services,
-    metrics,
-    professionals,
+    professionals, // Removido 'metrics'
     loading,
     modalType,
     setModalType,
@@ -94,9 +93,9 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
 
   // Função auxiliar para cor do status
   const getStatusColor = (status: string) => {
-    if (status === "COMPLETED") return colors.success; // Verde
-    if (status === "CANCELLED") return colors.error; // Vermelho
-    return colors.primary; // Amarelo/Dourado (Agendado)
+    if (status === "COMPLETED") return colors.success;
+    if (status === "CANCELLED") return colors.error;
+    return colors.primary;
   };
 
   const getStatusLabel = (status: string) => {
@@ -115,12 +114,11 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
+      {/* Tabs - SEM MÉTRICAS */}
       <View style={styles.tabs}>
         {renderTab("agenda", "Agenda", CalendarIcon)}
         {renderTab("services", "Serviços", Scissors)}
         {renderTab("team", "Equipe", Users)}
-        {renderTab("metrics", "Métricas", TrendingUp)}
       </View>
 
       {loading ? (
@@ -175,13 +173,12 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                     <TouchableOpacity
                       style={[
                         styles.card,
-                        // Borda colorida baseada no status
                         { borderLeftWidth: 4, borderLeftColor: statusColor },
                         item.status === "CANCELLED" && { opacity: 0.6 },
                       ]}
                       onPress={() => openAppointmentDetails(item)}
                     >
-                      {/* 1. Foto do Cliente */}
+                      {/* Foto do Cliente */}
                       {item.client_avatar ? (
                         <Image
                           source={{ uri: item.client_avatar }}
@@ -195,14 +192,12 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                         </View>
                       )}
 
-                      {/* 2. Informações */}
+                      {/* Informações */}
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{item.client_name}</Text>
                         <Text style={styles.cardDesc}>
                           {item.services?.name}
                         </Text>
-
-                        {/* Badge de Status com cor de fundo suave */}
                         <View
                           style={{
                             marginTop: 4,
@@ -230,7 +225,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                         </View>
                       </View>
 
-                      {/* 3. Horário */}
+                      {/* Horário */}
                       <View style={{ alignItems: "flex-end" }}>
                         <Clock
                           size={14}
@@ -248,7 +243,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
             </>
           )}
 
-          {/* ==================== SERVIÇOS ==================== */}
+          {/* ==================== SERVIÇOS (LAYOUT NOVO) ==================== */}
           {activeTab === "services" && (
             <>
               <FlatList
@@ -261,17 +256,46 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                   </Text>
                 }
                 renderItem={({ item }) => (
-                  <View style={styles.card}>
-                    <Scissors size={24} color={colors.primary} />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={styles.cardTitle}>{item.name}</Text>
-                      <Text style={styles.cardDesc}>
-                        {item.duration_minutes} min • R${" "}
-                        {Number(item.price).toFixed(2)}
-                      </Text>
+                  <View
+                    style={[
+                      styles.card,
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      },
+                    ]}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          backgroundColor: "rgba(212, 175, 55, 0.1)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Scissors size={20} color={colors.primary} />
+                      </View>
+                      <View>
+                        <Text style={styles.cardTitle}>{item.name}</Text>
+                        <Text style={styles.cardDesc}>
+                          {item.duration_minutes} min • R${" "}
+                          {Number(item.price).toFixed(2)}
+                        </Text>
+                      </View>
                     </View>
                     <TouchableOpacity
                       onPress={() => handleDeleteService(item.id)}
+                      style={{ padding: 8 }}
                     >
                       <Trash2 size={20} color={colors.textSecondary} />
                     </TouchableOpacity>
@@ -287,7 +311,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
             </>
           )}
 
-          {/* ==================== EQUIPE ==================== */}
+          {/* ==================== EQUIPE (SEM ADMIN) ==================== */}
           {activeTab === "team" && (
             <>
               <FlatList
@@ -296,18 +320,38 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
                 contentContainerStyle={{ paddingBottom: 80 }}
                 ListEmptyComponent={
                   <Text style={styles.emptyText}>
-                    Nenhum profissional além de você.
+                    Nenhum profissional extra.
                   </Text>
                 }
                 renderItem={({ item }) => (
                   <View style={styles.card}>
-                    <Users size={24} color={colors.primary} />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={styles.cardTitle}>{item.name}</Text>
-                      <Text style={styles.cardDesc}>{item.email}</Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          backgroundColor: "#27272A",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <User size={20} color={colors.primary} />
+                      </View>
+                      <View>
+                        <Text style={styles.cardTitle}>{item.name}</Text>
+                        <Text style={styles.cardDesc}>{item.email}</Text>
+                      </View>
                     </View>
                     <TouchableOpacity
                       onPress={() => handleDeleteProfessional(item.id)}
+                      style={{ position: "absolute", right: 16, top: 16 }}
                     >
                       <Trash2 size={20} color={colors.textSecondary} />
                     </TouchableOpacity>
@@ -322,32 +366,10 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
               </TouchableOpacity>
             </>
           )}
-
-          {/* ==================== MÉTRICAS ==================== */}
-          {activeTab === "metrics" && metrics && (
-            <ScrollView contentContainerStyle={styles.metricsContainer}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Agendamentos Hoje</Text>
-                <Text style={styles.metricValue}>
-                  {metrics.appointmentsToday || 0}
-                </Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Faturamento Hoje</Text>
-                <Text style={styles.metricValue}>
-                  R$ {metrics.revenueToday || "0.00"}
-                </Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Total Mensal</Text>
-                <Text style={styles.metricValue}>
-                  {metrics.appointmentsMonth || 0}
-                </Text>
-              </View>
-            </ScrollView>
-          )}
         </View>
       )}
+
+      {/* ==================== MODAIS ==================== */}
 
       {/* Modal de Detalhes (Agenda) */}
       <Modal
@@ -443,7 +465,7 @@ export function BarberDashboard({ onLogout }: { onLogout: () => void }) {
         </View>
       </Modal>
 
-      {/* Modal de Criação (Serviço/Profissional) - Mantido igual */}
+      {/* Modal de Criação (Serviço/Profissional) */}
       <Modal
         visible={modalType === "service" || modalType === "professional"}
         transparent
