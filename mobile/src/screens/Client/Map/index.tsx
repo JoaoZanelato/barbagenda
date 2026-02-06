@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Image, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, ActivityIndicator, TouchableOpacity } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { Navigation } from "lucide-react-native";
 
@@ -10,53 +10,23 @@ import { colors } from "../../../theme/colors";
 import { TenantProfileModal } from "../../../components/TenantProfileModal";
 import { SchedulingModal } from "../../../components/SchedulingModal";
 
-// === MARCADOR ===
-function TenantMarker({
-  tenant,
-  onPress,
-}: {
-  tenant: any;
-  onPress: () => void;
-}) {
-  // Estado para controlar o "Renascimento"
-  const [loaded, setLoaded] = useState(false);
+// === LÓGICA DE STATUS ===
+function getShopStatus(tenant: any) {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const day = now.getDay();
 
-  const imageUrl =
-    tenant.logo_url && tenant.logo_url.length > 10
-      ? tenant.logo_url
-      : `https://ui-avatars.com/api/?background=D4AF37&color=fff&bold=true&name=${encodeURIComponent(tenant.name)}`;
+  // Domingo Fechado
+  if (day === 0) return { isOpen: false, color: "red", text: "Fechado" };
 
-  return (
-    <Marker
-      // 👇 O PULO DO GATO:
-      // Mudando a key, forçamos o React a recriar o componente do zero.
-      // Isso corrige o bug visual do Android que congela o layout errado.
-      key={`${tenant.id}-${loaded ? "loaded" : "loading"}`}
-      coordinate={{
-        latitude: Number(tenant.latitude),
-        longitude: Number(tenant.longitude),
-      }}
-      onPress={onPress}
-      // Deixamos true para garantir que ele desenhe cada frame
-      tracksViewChanges={true}
-      anchor={{ x: 0.5, y: 0.5 }}
-    >
-      <View style={styles.markerSafeZone}>
-        <View style={styles.profileBubble}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.profileImage}
-            // Quando carregar, avisa para trocar a key e renascer
-            onLoadEnd={() => setLoaded(true)}
-            fadeDuration={0}
-          />
-        </View>
-      </View>
-    </Marker>
-  );
+  // 09:00 - 19:00 Aberto
+  if (currentHour >= 9 && currentHour < 19) {
+    return { isOpen: true, color: "green", text: "Aberto agora" };
+  }
+
+  return { isOpen: false, color: "red", text: "Fechado" };
 }
 
-// === TELA PRINCIPAL (Sem alterações) ===
 export function ClientMap() {
   const { mapRef, location, loading, visibleTenants, handleCenterMap } =
     useClientMap();
@@ -106,13 +76,26 @@ export function ClientMap() {
         }}
         toolbarEnabled={false}
       >
-        {visibleTenants.map((tenant) => (
-          <TenantMarker
-            key={tenant.id}
-            tenant={tenant}
-            onPress={() => handleOpenTenant(tenant)}
-          />
-        ))}
+        {visibleTenants.map((tenant) => {
+          const status = getShopStatus(tenant);
+
+          return (
+            <Marker
+              key={tenant.id}
+              coordinate={{
+                latitude: Number(tenant.latitude),
+                longitude: Number(tenant.longitude),
+              }}
+              // Título nativo (aparece num balãozinho ao clicar)
+              title={tenant.name}
+              description={status.text}
+              // A Cor nativa do pino Google
+              pinColor={status.color}
+              // Ao clicar no pino, abrimos o modal
+              onPress={() => handleOpenTenant(tenant)}
+            />
+          );
+        })}
       </MapView>
 
       <View style={{ position: "absolute", bottom: 30, right: 20 }}>
