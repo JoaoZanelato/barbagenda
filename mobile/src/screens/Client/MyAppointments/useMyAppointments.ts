@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Alert } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import api from "../../../services/API";
 import { Appointment } from "./types";
 
@@ -12,6 +13,9 @@ export function useMyAppointments() {
   );
 
   async function fetchAppointments() {
+    // Se for refresh manual (pull down), não ativa o loading de tela inteira
+    if (!refreshing) setLoading(true);
+
     try {
       const response = await api.get("/mobile/my-appointments");
       setAppointments(response.data);
@@ -50,9 +54,12 @@ export function useMyAppointments() {
     ]);
   }
 
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
+  // Substituído useEffect por useFocusEffect para recarregar sempre que a tela ganhar foco
+  useFocusEffect(
+    useCallback(() => {
+      fetchAppointments();
+    }, []),
+  );
 
   const filteredAppointments = useMemo(() => {
     const now = new Date();

@@ -8,19 +8,15 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
 import { Camera, MapPin, Store } from "lucide-react-native";
 import { useStoreConfig } from "./useStoreConfig";
 import { styles } from "./styles";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
-import { signOutBarber } from "../../../services/authService";
-import { useAuth } from "../../../context/AuthContext";
 import { colors } from "../../../theme/colors";
 
 export function StoreConfig() {
-  const { signOut } = useAuth();
   const {
     data,
     setData,
@@ -29,25 +25,6 @@ export function StoreConfig() {
     handleSave,
     handleGetLocation,
   } = useStoreConfig();
-
-  const handleBarberLogout = () => {
-    Alert.alert("Sair da Conta", "Tem certeza que deseja desconectar?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Sair",
-        style: "destructive",
-        onPress: async () => {
-          // 👇 MUDANÇA: "Fire and Forget"
-          // Dispara a limpeza do token mas NÃO espera (await) ela terminar.
-          // Se der erro, ninguém liga, o importante é o usuário sair.
-          signOutBarber().catch(() => {});
-
-          // Sai do app imediatamente
-          await signOut();
-        },
-      },
-    ]);
-  };
 
   return (
     <KeyboardAvoidingView
@@ -159,13 +136,7 @@ export function StoreConfig() {
             ) : (
               <Button title="Salvar Alterações" onPress={handleSave} />
             )}
-
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleBarberLogout}
-            >
-              <Text style={styles.logoutText}>Sair da Conta</Text>
-            </TouchableOpacity>
+            {/* Botão de Logout removido conforme solicitado */}
           </View>
 
           <View style={{ height: 40 }} />

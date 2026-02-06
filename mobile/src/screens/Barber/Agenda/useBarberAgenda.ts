@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Alert } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import api from "../../../services/API";
 
 export function useBarberAgenda() {
@@ -32,9 +33,12 @@ export function useBarberAgenda() {
     }
   }
 
-  useEffect(() => {
-    loadAgenda();
-  }, []);
+  // Substituído useEffect por useFocusEffect para recarregar ao entrar na tela
+  useFocusEffect(
+    useCallback(() => {
+      loadAgenda();
+    }, []),
+  );
 
   return {
     appointments,

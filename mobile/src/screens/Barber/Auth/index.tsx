@@ -7,6 +7,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native"; // 👈 Importação necessária
 import { Mail, Lock, Briefcase } from "lucide-react-native";
 import { styles } from "./styles";
 import { useBarberAuth } from "./useBarberAuth";
@@ -14,26 +15,27 @@ import { colors } from "../../../theme/colors";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
 
-interface Props {
-  onLoginSuccess: (token: string) => void;
-  onBack: () => void;
-}
-
-export function BarberAuth({ onLoginSuccess, onBack }: Props) {
+export function BarberAuth() {
+  const navigation = useNavigation(); // 👈 Hook de navegação
   const { email, setEmail, password, setPassword, loading, handleLogin } =
-    useBarberAuth(onLoginSuccess);
+    useBarberAuth();
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
+      // 👇 CORREÇÃO 1: Background aqui evita a barra branca
+      style={{ flex: 1, backgroundColor: colors.background }}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.container}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          {/* 👇 CORREÇÃO 2: navigation.goBack() */}
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+          >
             <Text style={styles.textGray}>Voltar</Text>
           </TouchableOpacity>
 

@@ -7,6 +7,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native"; // 👈 Importação necessária
 import { User, Phone, Lock } from "lucide-react-native";
 import { styles } from "./styles";
 import { useClientAuth } from "./useClientAuth";
@@ -14,12 +15,9 @@ import { colors } from "../../../theme/colors";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
 
-interface Props {
-  onLoginSuccess: (token: string) => void;
-  onBack: () => void;
-}
+export function ClientAuth() {
+  const navigation = useNavigation(); // 👈 Hook de navegação
 
-export function ClientAuth({ onLoginSuccess, onBack }: Props) {
   const {
     step,
     name,
@@ -31,19 +29,24 @@ export function ClientAuth({ onLoginSuccess, onBack }: Props) {
     loading,
     handleAuth,
     toggleStep,
-  } = useClientAuth(onLoginSuccess);
+  } = useClientAuth();
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
+      // 👇 CORREÇÃO 1: Background aqui evita a barra branca ao subir o teclado
+      style={{ flex: 1, backgroundColor: colors.background }}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled" // 👇 O SEGREDO: Permite clicar no input
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.container}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          {/* 👇 CORREÇÃO 2: navigation.goBack() faz o botão funcionar */}
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+          >
             <Text style={styles.textGray}>Voltar</Text>
           </TouchableOpacity>
 
