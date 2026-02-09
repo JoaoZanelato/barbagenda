@@ -19,17 +19,19 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
-  Phone,
 } from "lucide-react-native";
 import { format, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { styles } from "./styles";
-import { useBarberDashboard } from "./useBarberDashboard"; // 👈 Hook Correto
+import { useBarberDashboard } from "./useBarberDashboard";
 import { colors } from "../../../theme/colors";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
 import { useAuth } from "../../../context/AuthContext";
+
+// IMPORTA O MODAL CORRIGIDO
+import { AppointmentDetailsModal } from "../../../components/AppointmentDetailsModal";
 
 export function BarberDashboard() {
   const { signOut } = useAuth();
@@ -54,6 +56,7 @@ export function BarberDashboard() {
     handleUpdateStatus,
   } = useBarberDashboard();
 
+  // Estados locais para formulários
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [newDuration, setNewDuration] = useState("");
@@ -163,6 +166,12 @@ export function BarberDashboard() {
                 contentContainerStyle={{ paddingBottom: 80 }}
                 renderItem={({ item }) => {
                   const statusColor = getStatusColor(item.status);
+                  // Tratamento seguro dos dados do card
+                  const clientName =
+                    item.client_name || item.customers?.name || "Cliente";
+                  const initial = clientName.charAt(0).toUpperCase();
+                  const serviceName = item.services?.name || "Serviço";
+
                   return (
                     <TouchableOpacity
                       style={[
@@ -179,16 +188,13 @@ export function BarberDashboard() {
                         />
                       ) : (
                         <View style={styles.avatarPlaceholder}>
-                          <Text style={styles.avatarLetter}>
-                            {item.client_name ? item.client_name[0] : "C"}
-                          </Text>
+                          <Text style={styles.avatarLetter}>{initial}</Text>
                         </View>
                       )}
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{item.client_name}</Text>
-                        <Text style={styles.cardDesc}>
-                          {item.services?.name}
-                        </Text>
+                        <Text style={styles.cardTitle}>{clientName}</Text>
+                        <Text style={styles.cardDesc}>{serviceName}</Text>
+
                         <View
                           style={{
                             marginTop: 4,
@@ -196,12 +202,7 @@ export function BarberDashboard() {
                             paddingVertical: 2,
                             borderRadius: 4,
                             alignSelf: "flex-start",
-                            backgroundColor:
-                              item.status === "COMPLETED"
-                                ? "rgba(16,185,129,0.1)"
-                                : item.status === "CANCELLED"
-                                  ? "rgba(239,68,68,0.1)"
-                                  : "rgba(212,175,55,0.1)",
+                            backgroundColor: statusColor + "20",
                           }}
                         >
                           <Text
@@ -222,7 +223,9 @@ export function BarberDashboard() {
                           style={{ marginBottom: 4 }}
                         />
                         <Text style={styles.timeText}>
-                          {format(new Date(item.start_time), "HH:mm")}
+                          {item.start_time
+                            ? format(new Date(item.start_time), "HH:mm")
+                            : "--:--"}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -358,56 +361,78 @@ export function BarberDashboard() {
         </View>
       )}
 
-      {/* MODAIS (Código resumido, mantenha os que já existiam) */}
-      <Modal
-        visible={modalType === "appointment_details"}
-        transparent
-        animationType="slide"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedAppointment && (
-              <>
-                <Text style={styles.modalTitle}>Detalhes do Agendamento</Text>
-                {/* ... Detalhes ... */}
-                <TouchableOpacity
-                  style={styles.closeBtn}
-                  onPress={() => setModalType(null)}
-                >
-                  <Text style={styles.closeText}>Fechar</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
+      {/* === MODAL DE CRIAÇÃO (Serviço / Profissional) === */}
       <Modal
         visible={modalType === "service" || modalType === "professional"}
         transparent
         animationType="slide"
+        onRequestClose={() => setModalType(null)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
               {modalType === "service" ? "Novo Serviço" : "Novo Profissional"}
             </Text>
-            {/* ... Inputs ... */}
+
             {modalType === "service" ? (
-              <Button
-                title="Criar"
-                onPress={() =>
-                  handleCreateService(newName, newPrice, newDuration)
-                }
-              />
+              <>
+                <Input
+                  placeholder="Nome do Serviço"
+                  value={newName}
+                  onChangeText={setNewName}
+                />
+                <Input
+                  placeholder="Preço (ex: 30.00)"
+                  value={newPrice}
+                  onChangeText={setNewPrice}
+                  keyboardType="numeric"
+                />
+                <Input
+                  placeholder="Duração (minutos)"
+                  value={newDuration}
+                  onChangeText={setNewDuration}
+                  keyboardType="numeric"
+                />
+                <View style={{ marginTop: 10 }}>
+                  <Button
+                    title="Criar Serviço"
+                    onPress={() =>
+                      handleCreateService(newName, newPrice, newDuration)
+                    }
+                  />
+                </View>
+              </>
             ) : (
-              <Button
-                title="Criar"
-                onPress={() =>
-                  handleCreateProfessional(newName, newEmail, newPassword)
-                }
-              />
+              <>
+                <Input
+                  placeholder="Nome Completo"
+                  value={newName}
+                  onChangeText={setNewName}
+                />
+                <Input
+                  placeholder="Email"
+                  value={newEmail}
+                  onChangeText={setNewEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <Input
+                  placeholder="Senha"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                />
+                <View style={{ marginTop: 10 }}>
+                  <Button
+                    title="Criar Profissional"
+                    onPress={() =>
+                      handleCreateProfessional(newName, newEmail, newPassword)
+                    }
+                  />
+                </View>
+              </>
             )}
+
             <TouchableOpacity
               style={styles.closeBtn}
               onPress={() => setModalType(null)}
@@ -417,6 +442,17 @@ export function BarberDashboard() {
           </View>
         </View>
       </Modal>
+
+      {/* === MODAL DE DETALHES DO AGENDAMENTO (COMPONENTIZADO) === */}
+      <AppointmentDetailsModal
+        visible={modalType === "appointment_details"}
+        appointment={selectedAppointment}
+        onClose={() => setModalType(null)}
+        onStatusChange={(id, status) => {
+          handleUpdateStatus(id, status);
+          setModalType(null); // Fecha o modal após ação
+        }}
+      />
     </View>
   );
 }

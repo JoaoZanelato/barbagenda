@@ -3,19 +3,14 @@ import { Alert } from "react-native";
 import { isSameDay, parseISO } from "date-fns";
 import api from "../../../services/API";
 
-// 👇 ATUALIZE A INTERFACE AQUI
 export interface Appointment {
   id: string;
   start_time: string;
   end_time: string;
   status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
-
-  // Novos campos mapeados pelo Backend
   client_name: string;
   client_avatar: string | null;
   client_phone: string;
-
-  // Campos antigos (mantidos para compatibilidade do modal)
   customers?: { id: string; name: string; phone: string };
   services?: { id: string; name: string; price: string | number };
   users?: { name: string };
@@ -55,6 +50,8 @@ export function useBarberDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Estado unificado de Modais
   const [modalType, setModalType] = useState<
     "service" | "professional" | "appointment_details" | null
   >(null);
@@ -65,8 +62,6 @@ export function useBarberDashboard() {
     try {
       if (!isSilent) setLoading(true);
 
-      // Backend corrigido agora aceita chamada sem filtro de data (retorna tudo ou padrão)
-      // Se quiser otimizar, pode passar start_time/end_time do dia aqui
       const [agendaRes, servicesRes, metricsRes, teamRes] = await Promise.all([
         api.get("/appointments"),
         api.get("/services"),
@@ -87,7 +82,8 @@ export function useBarberDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(() => fetchData(true), 10000);
+    // Refresh automático a cada 30s para não sobrecarregar
+    const interval = setInterval(() => fetchData(true), 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -107,48 +103,103 @@ export function useBarberDashboard() {
     }
   }, [selectedDate, appointments]);
 
-  // ... (Mantenha as funções handleCreateService, handleDeleteService, etc. iguais)
-  // Vou omitir aqui para economizar espaço, mas mantenha o código original dessas funções
-
+  // === LÓGICA DE SERVIÇOS ===
   async function handleCreateService(
     name: string,
     price: string,
     duration: string,
   ) {
-    /* ...código original... */
+    if (!name || !price || !duration)
+      return Alert.alert("Erro", "Preencha todos os campos.");
+    try {
+      await api.post("/services", {
+        name,
+        price: Number(price),
+        duration_minutes: Number(duration),
+      });
+      Alert.alert("Sucesso", "Serviço criado!");
+      setModalType(null);
+      fetchData(true);
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível criar o serviço.");
+    }
   }
+
   async function handleDeleteService(id: string) {
-    /* ...código original... */
+    Alert.alert("Confirmar", "Deseja excluir este serviço?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.delete(`/services/${id}`);
+            setServices((prev) => prev.filter((s) => s.id !== id));
+          } catch {
+            Alert.alert("Erro", "Falha ao excluir.");
+          }
+        },
+      },
+    ]);
   }
+
+  // === LÓGICA DE PROFISSIONAIS ===
   async function handleCreateProfessional(
     name: string,
     email: string,
     password: string,
   ) {
-    /* ...código original... */
-  }
-  async function handleDeleteProfessional(id: string) {
-    /* ...código original... */
+    if (!name || !email || !password)
+      return Alert.alert("Erro", "Preencha todos os campos.");
+    try {
+      await api.post("/professionals", { name, email, password });
+      Alert.alert("Sucesso", "Profissional adicionado!");
+      setModalType(null);
+      fetchData(true);
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível criar o profissional.");
+    }
   }
 
+  async function handleDeleteProfessional(id: string) {
+    Alert.alert("Confirmar", "Remover este profissional?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Remover",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.delete(`/professionals/${id}`);
+            setProfessionals((prev) => prev.filter((p) => p.id !== id));
+          } catch {
+            Alert.alert("Erro", "Falha ao remover.");
+          }
+        },
+      },
+    ]);
+  }
+
+  // === ATUALIZAR STATUS ===
   async function handleUpdateStatus(
     id: string,
     status: "COMPLETED" | "CANCELLED",
   ) {
     try {
       await api.patch(`/appointments/${id}`, { status });
+
+      // Atualiza localmente para feedback instantâneo
       const updatedList = appointments.map((app) =>
         app.id === id ? { ...app, status } : app,
       );
       setAppointments(updatedList);
-      if (selectedAppointment && selectedAppointment.id === id) {
-        setSelectedAppointment({ ...selectedAppointment, status });
-      }
+
       Alert.alert(
         "Sucesso",
         `Agendamento ${status === "COMPLETED" ? "concluído" : "cancelado"}!`,
       );
       if (status === "CANCELLED") setModalType(null);
+
+      fetchData(true); // Garante sincronia
     } catch (error) {
       Alert.alert("Erro", "Não foi possível atualizar o status.");
     }

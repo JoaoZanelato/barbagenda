@@ -37,34 +37,44 @@ export function AppointmentDetailsModal({
 }: Props) {
   if (!appointment) return null;
 
-  // === TRATAMENTO DE DADOS (Compatível com AppointmentController) ===
-  const clientName = appointment.client_name || "Cliente";
-  const clientPhone = appointment.client_phone || "";
-  const clientAvatar = appointment.client_avatar;
-
-  // O backend envia 'services' como objeto (relação Prisma)
+  // === TRATAMENTO DE DADOS ===
+  // Garante que não quebra se vier nulo e busca os campos corretos
+  const clientName =
+    appointment.client_name ||
+    appointment.app_client?.name ||
+    "Cliente Desconhecido";
+  const clientPhone =
+    appointment.client_phone || appointment.app_client?.phone || "";
+  const clientAvatar =
+    appointment.client_avatar || appointment.app_client?.avatar_url;
   const serviceName = appointment.services?.name || "Serviço não informado";
 
-  // Preço total ou preço do serviço
-  const priceRaw = appointment.total_price || appointment.services?.price || 0;
-  const price = Number(priceRaw).toFixed(2);
+  // Preço e Data
+  const price = Number(
+    appointment.total_price || appointment.services?.price || 0,
+  ).toFixed(2);
 
-  // Formatação de Data/Hora
-  const dateStr = appointment.start_time
-    ? format(new Date(appointment.start_time), "EEEE, dd 'de' MMMM", {
-        locale: ptBR,
-      })
-    : "--";
-
-  const timeStr = appointment.start_time
-    ? format(new Date(appointment.start_time), "HH:mm")
-    : "--:--";
+  let dateStr = "--";
+  let timeStr = "--";
+  if (appointment.start_time) {
+    try {
+      const date = new Date(appointment.start_time);
+      dateStr = format(date, "EEEE, dd 'de' MMMM", { locale: ptBR });
+      timeStr = format(date, "HH:mm");
+    } catch (e) {
+      // Data inválida, mantém o fallback
+    }
+  }
 
   const handleCall = () => {
     if (clientPhone) Linking.openURL(`tel:${clientPhone}`);
   };
 
   const initial = clientName.charAt(0).toUpperCase();
+
+  // Verifica se pode exibir os botões de ação
+  const isScheduled =
+    appointment.status === "scheduled" || appointment.status === "SCHEDULED";
 
   return (
     <Modal
@@ -75,16 +85,20 @@ export function AppointmentDetailsModal({
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
-          {/* Cabeçalho */}
+          {/* HEADER FIXO */}
           <View style={styles.header}>
-            <Text style={styles.title}>Detalhes do Agendamento</Text>
+            <Text style={styles.title}>Detalhes</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color="#FFF" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Cartão do Cliente */}
+          {/* CONTEÚDO COM SCROLL */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            {/* 1. SEÇÃO CLIENTE */}
             <View style={styles.clientSection}>
               {clientAvatar ? (
                 <Image
@@ -96,7 +110,7 @@ export function AppointmentDetailsModal({
                   <Text style={styles.avatarLetter}>{initial}</Text>
                 </View>
               )}
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, marginLeft: 16 }}>
                 <Text style={styles.clientName}>{clientName}</Text>
                 {clientPhone ? (
                   <TouchableOpacity
@@ -111,51 +125,53 @@ export function AppointmentDetailsModal({
                     <Text style={styles.clientPhone}>{clientPhone}</Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={[styles.clientPhone, { color: "#52525B" }]}>
-                    Sem telefone
-                  </Text>
+                  <Text style={styles.clientPhone}>Sem telefone</Text>
                 )}
               </View>
             </View>
 
-            {/* Informações */}
+            {/* 2. LISTA DE DADOS */}
             <View style={styles.infoContainer}>
+              {/* Data */}
               <View style={styles.infoRow}>
                 <View style={styles.iconBox}>
                   <Calendar size={20} color="#D4AF37" />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View>
                   <Text style={styles.infoLabel}>Data</Text>
                   <Text style={styles.infoValue}>{dateStr}</Text>
                 </View>
               </View>
 
+              {/* Hora */}
               <View style={styles.infoRow}>
                 <View style={styles.iconBox}>
                   <Clock size={20} color="#D4AF37" />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View>
                   <Text style={styles.infoLabel}>Horário</Text>
                   <Text style={styles.infoValue}>{timeStr}</Text>
                 </View>
               </View>
 
+              {/* Serviço */}
               <View style={styles.infoRow}>
                 <View style={styles.iconBox}>
                   <Scissors size={20} color="#D4AF37" />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View>
                   <Text style={styles.infoLabel}>Serviço</Text>
                   <Text style={styles.infoValue}>{serviceName}</Text>
                 </View>
               </View>
 
+              {/* Valor */}
               <View style={styles.infoRow}>
                 <View style={styles.iconBox}>
                   <DollarSign size={20} color="#22C55E" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>Valor Total</Text>
+                <View>
+                  <Text style={styles.infoLabel}>Valor</Text>
                   <Text style={[styles.infoValue, { color: "#22C55E" }]}>
                     R$ {price}
                   </Text>
@@ -163,9 +179,8 @@ export function AppointmentDetailsModal({
               </View>
             </View>
 
-            {/* Botões de Ação (Apenas se Agendado) */}
-            {appointment.status === "scheduled" ||
-            appointment.status === "SCHEDULED" ? (
+            {/* 3. BOTÕES (Só aparecem se for agendado) */}
+            {isScheduled ? (
               <View style={styles.actions}>
                 <TouchableOpacity
                   style={styles.completeButton}
@@ -175,7 +190,7 @@ export function AppointmentDetailsModal({
                   }}
                 >
                   <CheckCircle size={20} color="#FFF" />
-                  <Text style={styles.completeText}>Concluir Atendimento</Text>
+                  <Text style={styles.completeText}>Concluir</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -190,11 +205,16 @@ export function AppointmentDetailsModal({
                 </TouchableOpacity>
               </View>
             ) : (
-              <Text style={styles.statusMessage}>
-                Agendamento{" "}
-                {appointment.status === "completed" ? "Concluído" : "Cancelado"}
-                .
-              </Text>
+              <View style={styles.statusBadge}>
+                <Text style={{ color: "#A1A1AA" }}>
+                  Status:{" "}
+                  <Text style={{ color: "#FFF", fontWeight: "bold" }}>
+                    {appointment.status === "completed"
+                      ? "Concluído"
+                      : "Cancelado"}
+                  </Text>
+                </Text>
+              </View>
             )}
           </ScrollView>
         </View>

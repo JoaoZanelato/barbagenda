@@ -1,145 +1,157 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform, StatusBar } from "react-native";
+
+// Cálculo seguro da margem superior para não ficar embaixo do relógio
+const ANDROID_STATUS_BAR = StatusBar.currentHeight || 24;
+const IOS_STATUS_BAR = 60;
 
 export const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    justifyContent: "flex-end",
-  },
   container: {
-    backgroundColor: "#18181B",
-    width: "100%",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: "85%", // Limite de altura
+    flex: 1,
+    backgroundColor: "#09090B",
+    paddingTop:
+      Platform.OS === "android" ? ANDROID_STATUS_BAR + 10 : IOS_STATUS_BAR,
   },
+
+  // === HEADER ===
   header: {
+    paddingHorizontal: 24,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 24,
   },
+  greeting: {
+    fontSize: 16,
+    color: "#A1A1AA",
+    fontFamily: "Inter_400Regular",
+  },
   title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  closeButton: {
-    padding: 8,
-  },
-
-  // Cliente
-  clientSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-    backgroundColor: "#27272A",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#3F3F46",
-  },
-  avatarImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 16,
-  },
-  avatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#D4AF37",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  avatarLetter: {
     fontSize: 24,
-    color: "#FFF",
-    fontWeight: "bold",
-  },
-  clientName: {
-    fontSize: 18,
-    fontWeight: "bold",
     color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    marginTop: 4,
   },
-  clientPhone: {
-    fontSize: 14,
-    color: "#A1A1AA",
-    marginLeft: 6,
+  avatarButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#27272A",
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
   },
 
-  // Info
-  infoContainer: {
-    gap: 12,
+  // === BUSCA ===
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#18181B",
+    marginHorizontal: 24,
+    paddingHorizontal: 16,
+    height: 56,
+    borderRadius: 12,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#27272A",
   },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#27272A",
-    padding: 12,
-    borderRadius: 8,
-  },
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(212, 175, 55, 0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: "#A1A1AA",
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 16,
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
     color: "#FFFFFF",
-    fontWeight: "500",
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
   },
 
-  // Botões
-  actions: {
-    gap: 12,
-    marginTop: 10,
+  // === FILTRO ===
+  filterContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 16,
   },
-  completeButton: {
-    backgroundColor: "#22C55E",
+  filterButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
     gap: 8,
   },
-  completeText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 16,
+  filterButtonActive: {
+    opacity: 1,
   },
-  cancelButton: {
-    backgroundColor: "#EF4444",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  cancelText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  statusMessage: {
-    textAlign: "center",
-    color: "#A1A1AA",
-    marginTop: 10,
+  filterText: {
     fontSize: 14,
+    color: "#A1A1AA",
+    fontFamily: "Inter_500Medium",
+  },
+
+  // === LISTA ===
+  listContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 100,
+  },
+
+  // === CARD DA BARBEARIA ===
+  card: {
+    backgroundColor: "#18181B",
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#27272A",
+  },
+  coverImage: {
+    width: "100%",
+    height: 150,
+    backgroundColor: "#27272A",
+  },
+  cardContent: {
+    padding: 16,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    flex: 1,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(234, 179, 8, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  ratingText: {
+    color: "#EAB308",
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+  cardAddress: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+  },
+  addressText: {
+    color: "#A1A1AA",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
+  favoriteButton: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    padding: 8,
+    borderRadius: 20,
+    zIndex: 10,
   },
 });

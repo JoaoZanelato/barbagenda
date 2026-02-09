@@ -12,6 +12,7 @@ export const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
+    minHeight: 450, // Garante altura mínima
     maxHeight: "85%",
   },
   header: {
@@ -19,9 +20,20 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "#27272A",
+    paddingBottom: 16,
   },
-  title: { fontSize: 20, fontWeight: "bold", color: "#FFFFFF" },
-  closeButton: { padding: 8 },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  closeButton: {
+    padding: 4,
+  },
+
+  // Cliente
   clientSection: {
     flexDirection: "row",
     alignItems: "center",
@@ -32,6 +44,11 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#3F3F46",
   },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
   avatarPlaceholder: {
     width: 50,
     height: 50,
@@ -39,13 +56,28 @@ export const styles = StyleSheet.create({
     backgroundColor: "#D4AF37",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
   },
-  avatarImage: { width: 50, height: 50, borderRadius: 25, marginRight: 16 },
-  avatarLetter: { fontSize: 24, color: "#FFF", fontWeight: "bold" },
-  clientName: { fontSize: 18, fontWeight: "bold", color: "#FFFFFF" },
-  clientPhone: { fontSize: 14, color: "#A1A1AA", marginLeft: 6 },
-  infoContainer: { gap: 12, marginBottom: 24 },
+  avatarLetter: {
+    fontSize: 24,
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+  clientName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  clientPhone: {
+    fontSize: 14,
+    color: "#A1A1AA",
+    marginTop: 2,
+  },
+
+  // Info
+  infoContainer: {
+    gap: 12,
+    marginBottom: 24,
+  },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -60,30 +92,57 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(212, 175, 55, 0.15)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
+    marginRight: 12,
   },
-  infoLabel: { fontSize: 12, color: "#A1A1AA", marginBottom: 2 },
-  infoValue: { fontSize: 16, fontWeight: "500" },
-  actions: { gap: 12, marginTop: 10 },
+  infoLabel: {
+    fontSize: 12,
+    color: "#A1A1AA",
+    marginBottom: 2,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    fontWeight: "500",
+  },
+
+  // Botões
+  actions: {
+    gap: 12,
+    marginTop: 10,
+  },
   completeButton: {
     backgroundColor: "#22C55E",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     gap: 8,
   },
-  completeText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  completeText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
   cancelButton: {
     backgroundColor: "#EF4444",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     gap: 8,
   },
-  cancelText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
-  statusMessage: { textAlign: "center", color: "#A1A1AA", marginTop: 10 },
+  cancelText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  statusBadge: {
+    marginTop: 20,
+    alignItems: "center",
+    padding: 10,
+    backgroundColor: "#27272A",
+    borderRadius: 8,
+  },
 });
