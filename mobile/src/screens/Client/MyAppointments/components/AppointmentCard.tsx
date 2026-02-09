@@ -19,17 +19,16 @@ interface Props {
 }
 
 export function AppointmentCard({ data, onCancel }: Props) {
-  // Normaliza o status
   const status = data.status ? data.status.toLowerCase() : "scheduled";
 
   const getStatusColor = () => {
     switch (status) {
       case "cancelled":
-        return "#EF4444"; // Vermelho
+        return "#EF4444";
       case "completed":
-        return "#10B981"; // Verde (Atendido)
+        return "#10B981";
       default:
-        return "#F59E0B"; // Amarelo (Agendado)
+        return "#F59E0B";
     }
   };
 
@@ -44,36 +43,26 @@ export function AppointmentCard({ data, onCancel }: Props) {
     }
   };
 
-  const getStatusIcon = () => {
-    switch (status) {
-      case "cancelled":
-        return <XCircle size={14} color="#FFF" />;
-      case "completed":
-        return <CheckCircle2 size={14} color="#FFF" />;
-      default:
-        return <Clock size={14} color="#FFF" />;
-    }
-  };
-
   return (
     <View style={[styles.card, status === "cancelled" && styles.cardDimmed]}>
       <View style={styles.cardHeader}>
         <View
           style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}
         >
-          {getStatusIcon()}
+          <Clock size={14} color="#FFF" />
           <Text style={styles.statusText}>{getStatusText()}</Text>
         </View>
         <Text style={styles.price}>R$ {data.services?.price || "0,00"}</Text>
       </View>
 
-      <Text style={styles.shopName}>{data.tenants?.name}</Text>
+      <Text style={[styles.shopName, { color: "#FFF" }]}>
+        {data.tenants?.name}
+      </Text>
       <View style={styles.divider} />
 
       <View style={styles.infoRow}>
         <Calendar size={18} color="#A1A1AA" />
-        <Text style={styles.infoText}>
-          {/* Garante que a data é válida antes de formatar */}
+        <Text style={[styles.infoText, { color: "#E4E4E7" }]}>
           {data.start_time
             ? format(new Date(data.start_time), "EEEE, dd 'de' MMMM", {
                 locale: ptBR,
@@ -84,23 +73,25 @@ export function AppointmentCard({ data, onCancel }: Props) {
 
       <View style={styles.infoRow}>
         <Clock size={18} color="#A1A1AA" />
-        <Text style={styles.infoText}>
+        <Text style={[styles.infoText, { color: "#E4E4E7" }]}>
           {data.start_time
-            ? format(new Date(data.start_time), "HH:mm", { locale: ptBR })
+            ? format(new Date(data.start_time), "HH:mm")
             : "--:--"}
         </Text>
       </View>
 
       <View style={styles.infoRow}>
         <User size={18} color="#A1A1AA" />
-        <Text style={styles.infoText}>
+        <Text style={[styles.infoText, { color: "#E4E4E7" }]}>
           {data.users?.name || "Profissional"}
         </Text>
       </View>
 
       <View style={styles.infoRow}>
         <Scissors size={18} color="#A1A1AA" />
-        <Text style={styles.infoText}>{data.services?.name}</Text>
+        <Text style={[styles.infoText, { color: "#E4E4E7" }]}>
+          {data.services?.name || "Serviço"}
+        </Text>
       </View>
 
       {status === "scheduled" && (

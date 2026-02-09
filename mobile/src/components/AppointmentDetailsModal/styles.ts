@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    maxHeight: "85%", // Limite de altura
+    maxHeight: "85%",
   },
   header: {
     flexDirection: "row",
@@ -20,16 +20,8 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  closeButton: {
-    padding: 8,
-  },
-
-  // Cliente
+  title: { fontSize: 20, fontWeight: "bold", color: "#FFFFFF" },
+  closeButton: { padding: 8 },
   clientSection: {
     flexDirection: "row",
     alignItems: "center",
@@ -40,12 +32,6 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#3F3F46",
   },
-  avatarImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 16,
-  },
   avatarPlaceholder: {
     width: 50,
     height: 50,
@@ -55,27 +41,11 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 16,
   },
-  avatarLetter: {
-    fontSize: 24,
-    color: "#FFF",
-    fontWeight: "bold",
-  },
-  clientName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  clientPhone: {
-    fontSize: 14,
-    color: "#A1A1AA",
-    marginLeft: 6,
-  },
-
-  // Info
-  infoContainer: {
-    gap: 12,
-    marginBottom: 24,
-  },
+  avatarImage: { width: 50, height: 50, borderRadius: 25, marginRight: 16 },
+  avatarLetter: { fontSize: 24, color: "#FFF", fontWeight: "bold" },
+  clientName: { fontSize: 18, fontWeight: "bold", color: "#FFFFFF" },
+  clientPhone: { fontSize: 14, color: "#A1A1AA", marginLeft: 6 },
+  infoContainer: { gap: 12, marginBottom: 24 },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -92,22 +62,9 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 16,
   },
-  infoLabel: {
-    fontSize: 12,
-    color: "#A1A1AA",
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: "#FFFFFF",
-    fontWeight: "500",
-  },
-
-  // Botões
-  actions: {
-    gap: 12,
-    marginTop: 10,
-  },
+  infoLabel: { fontSize: 12, color: "#A1A1AA", marginBottom: 2 },
+  infoValue: { fontSize: 16, fontWeight: "500" },
+  actions: { gap: 12, marginTop: 10 },
   completeButton: {
     backgroundColor: "#22C55E",
     flexDirection: "row",
@@ -117,11 +74,7 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  completeText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  completeText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
   cancelButton: {
     backgroundColor: "#EF4444",
     flexDirection: "row",
@@ -131,15 +84,6 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  cancelText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  statusMessage: {
-    textAlign: "center",
-    color: "#A1A1AA",
-    marginTop: 10,
-    fontSize: 14,
-  },
+  cancelText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  statusMessage: { textAlign: "center", color: "#A1A1AA", marginTop: 10 },
 });
