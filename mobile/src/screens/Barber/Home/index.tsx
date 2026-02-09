@@ -8,6 +8,7 @@ import {
   Modal,
   Image,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native"; // <--- Importante para navegar
 import {
   LogOut,
   Calendar as CalendarIcon,
@@ -19,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Settings, // Ícone para o botão de horários
 } from "lucide-react-native";
 import { format, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -29,12 +31,11 @@ import { colors } from "../../../theme/colors";
 import { Input } from "../../../components/Input";
 import { Button } from "../../../components/Button";
 import { useAuth } from "../../../context/AuthContext";
-
-// IMPORTA O MODAL CORRIGIDO
 import { AppointmentDetailsModal } from "../../../components/AppointmentDetailsModal";
 
 export function BarberDashboard() {
   const { signOut } = useAuth();
+  const navigation = useNavigation(); // <--- Hook de navegação
 
   const {
     activeTab,
@@ -56,7 +57,7 @@ export function BarberDashboard() {
     handleUpdateStatus,
   } = useBarberDashboard();
 
-  // Estados locais para formulários
+  // Estados locais
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [newDuration, setNewDuration] = useState("");
@@ -129,7 +130,7 @@ export function BarberDashboard() {
         />
       ) : (
         <View style={{ flex: 1 }}>
-          {/* === AGENDA === */}
+          {/* === TAB: AGENDA === */}
           {activeTab === "agenda" && (
             <>
               <View style={styles.dateFilter}>
@@ -163,10 +164,9 @@ export function BarberDashboard() {
                     Agenda livre para este dia.
                   </Text>
                 }
-                contentContainerStyle={{ paddingBottom: 80 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 renderItem={({ item }) => {
                   const statusColor = getStatusColor(item.status);
-                  // Tratamento seguro dos dados do card
                   const clientName =
                     item.client_name || item.customers?.name || "Cliente";
                   const initial = clientName.charAt(0).toUpperCase();
@@ -232,16 +232,31 @@ export function BarberDashboard() {
                   );
                 }}
               />
+
+              {/* === BOTÃO FLUTUANTE PARA CONFIGURAR HORÁRIOS === */}
+              <TouchableOpacity
+                style={[
+                  styles.fab,
+                  {
+                    backgroundColor: "#27272A",
+                    borderWidth: 1,
+                    borderColor: colors.primary,
+                  },
+                ]}
+                onPress={() => navigation.navigate("Availability" as never)}
+              >
+                <Settings size={24} color={colors.primary} />
+              </TouchableOpacity>
             </>
           )}
 
-          {/* === SERVIÇOS === */}
+          {/* === TAB: SERVIÇOS === */}
           {activeTab === "services" && (
             <>
               <FlatList
                 data={services}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingBottom: 80 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 ListEmptyComponent={
                   <Text style={styles.emptyText}>
                     Nenhum serviço cadastrado.
@@ -303,13 +318,13 @@ export function BarberDashboard() {
             </>
           )}
 
-          {/* === EQUIPE === */}
+          {/* === TAB: EQUIPE === */}
           {activeTab === "team" && (
             <>
               <FlatList
                 data={professionals}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingBottom: 80 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 ListEmptyComponent={
                   <Text style={styles.emptyText}>
                     Nenhum profissional extra.
@@ -361,7 +376,7 @@ export function BarberDashboard() {
         </View>
       )}
 
-      {/* === MODAL DE CRIAÇÃO (Serviço / Profissional) === */}
+      {/* MODAIS (Criação e Detalhes) */}
       <Modal
         visible={modalType === "service" || modalType === "professional"}
         transparent
@@ -443,14 +458,13 @@ export function BarberDashboard() {
         </View>
       </Modal>
 
-      {/* === MODAL DE DETALHES DO AGENDAMENTO (COMPONENTIZADO) === */}
       <AppointmentDetailsModal
         visible={modalType === "appointment_details"}
         appointment={selectedAppointment}
         onClose={() => setModalType(null)}
         onStatusChange={(id, status) => {
           handleUpdateStatus(id, status);
-          setModalType(null); // Fecha o modal após ação
+          setModalType(null);
         }}
       />
     </View>

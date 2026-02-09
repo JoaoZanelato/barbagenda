@@ -2,126 +2,72 @@ import { StyleSheet } from "react-native";
 import { colors } from "../../../theme/colors";
 
 export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: 24,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    marginTop: 20,
+    marginBottom: 24,
   },
   headerTitle: {
-    color: colors.text,
     fontSize: 24,
-    fontFamily: "PlayfairDisplay_700Bold",
+    color: colors.text,
+    fontFamily: "Inter_700Bold",
   },
-
   tabs: {
     flexDirection: "row",
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    gap: 10,
+    marginBottom: 24,
+    backgroundColor: "#18181B",
+    borderRadius: 12,
+    padding: 4,
   },
   tab: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: "#27272A",
-    gap: 6,
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
   },
-  activeTab: { backgroundColor: colors.primary },
+  activeTab: {
+    backgroundColor: colors.primary,
+  },
   tabText: {
     color: colors.textSecondary,
+    fontFamily: "Inter_600SemiBold",
     fontSize: 14,
-    fontFamily: "Montserrat_400Regular",
   },
   activeTabText: {
     color: colors.background,
+    fontFamily: "Inter_700Bold",
     fontSize: 14,
-    fontFamily: "Montserrat_700Bold",
   },
-
-  // Filtro de Data
   dateFilter: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    justifyContent: "space-between",
     marginBottom: 20,
+    backgroundColor: "#18181B",
+    padding: 16,
+    borderRadius: 12,
   },
   dateText: {
     color: colors.text,
-    fontSize: 18,
-    fontFamily: "Montserrat_700Bold",
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
     textTransform: "capitalize",
   },
   dateSubText: {
     color: colors.textSecondary,
     fontSize: 12,
-    fontFamily: "Montserrat_400Regular",
-  },
-
-  // Card de Agendamento (Atualizado)
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#18181B",
-    marginHorizontal: 20,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#27272A",
-  },
-
-  // Avatar
-  avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
-  avatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#27272A",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  avatarLetter: { color: "#A1A1AA", fontSize: 18, fontWeight: "bold" },
-
-  // Info do Card
-  timeBox: { alignItems: "flex-end", marginRight: 12 },
-  timeText: {
-    color: colors.text,
-    fontSize: 16,
-    fontFamily: "Montserrat_700Bold",
-  },
-
-  cardTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontFamily: "Montserrat_700Bold",
-  },
-  cardDesc: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontFamily: "Montserrat_400Regular",
-  },
-
-  // Status Badge
-  statusBadge: {
-    fontSize: 12,
-    fontFamily: "Montserrat_700Bold",
     marginTop: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: "flex-start",
-    overflow: "hidden",
   },
-
   emptyText: {
     color: colors.textSecondary,
     textAlign: "center",
@@ -129,11 +75,57 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // FAB e Modais
+  // CARD
+  card: {
+    backgroundColor: "#18181B",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#27272A",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#3F3F46",
+  },
+  avatarLetter: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.primary,
+  },
+  cardTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  cardDesc: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 4,
+  },
+  timeText: {
+    color: colors.text,
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+
+  // FAB (Floating Action Button)
   fab: {
     position: "absolute",
-    bottom: 20,
-    right: 20,
+    bottom: 24,
+    right: 24,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -141,54 +133,38 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 
-  // Estilos do Modal (Mantidos)
+  // MODAL
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center",
-    padding: 20,
+    padding: 24,
   },
-  modalContent: { backgroundColor: "#18181B", borderRadius: 16, padding: 20 },
+  modalContent: {
+    backgroundColor: "#18181B",
+    borderRadius: 24,
+    padding: 24,
+  },
   modalTitle: {
-    color: colors.text,
     fontSize: 20,
-    fontFamily: "PlayfairDisplay_700Bold",
-    marginBottom: 20,
+    color: colors.text,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 24,
     textAlign: "center",
   },
-  detailRow: {
-    flexDirection: "row",
+  closeBtn: {
+    marginTop: 16,
     alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
+    padding: 12,
   },
-  detailText: {
-    color: colors.text,
+  closeText: {
+    color: colors.textSecondary,
     fontSize: 16,
-    fontFamily: "Montserrat_400Regular",
-  },
-  divider: { height: 1, backgroundColor: "#27272A", marginVertical: 10 },
-  actionButtons: { marginTop: 20 },
-  closeBtn: { marginTop: 10, padding: 10, alignItems: "center" },
-  closeText: { color: colors.textSecondary },
-
-  // Métricas
-  metricsContainer: { padding: 20 },
-  metricCard: {
-    backgroundColor: "#18181B",
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#27272A",
-    alignItems: "center",
-  },
-  metricLabel: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
-  metricValue: {
-    color: colors.primary,
-    fontSize: 32,
-    fontFamily: "PlayfairDisplay_700Bold",
   },
 });
